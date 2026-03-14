@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Cell, Paragraph, Row, Table},
+    widgets::{Block, Cell, Paragraph, Row, Table, Wrap},
 };
 use std::collections::{BTreeMap, HashSet};
 
@@ -433,14 +433,35 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
         (_, None) => (Text::raw("(no agent selected)"), 1),
     };
 
+    // Calculate wrapped line count so scroll-to-bottom works with long lines
+    let wrapped_line_count = if inner_area.width > 0 {
+        text.lines
+            .iter()
+            .map(|line| {
+                let w = line.width();
+                let width = inner_area.width as usize;
+                if w <= width {
+                    1u16
+                } else {
+                    ((w - 1) / width + 1) as u16
+                }
+            })
+            .sum::<u16>()
+    } else {
+        line_count
+    };
+
     // Update line count for scroll calculations
-    app.preview_line_count = line_count;
+    app.preview_line_count = wrapped_line_count;
 
     // Calculate scroll offset: use manual scroll if set, otherwise auto-scroll to bottom
-    let max_scroll = line_count.saturating_sub(inner_area.height);
+    let max_scroll = wrapped_line_count.saturating_sub(inner_area.height);
     let scroll_offset = app.preview_scroll.unwrap_or(max_scroll);
 
-    let paragraph = Paragraph::new(text).block(block).scroll((scroll_offset, 0));
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .wrap(Wrap { trim: false })
+        .scroll((scroll_offset, 0));
 
     f.render_widget(paragraph, area);
 }
