@@ -742,6 +742,23 @@ impl App {
         }
     }
 
+    /// Open the selected agent's worktree in VS Code
+    pub fn open_selected_in_editor(&self) {
+        let path = if let ViewMode::Diff(ref diff) = self.view_mode {
+            Some(diff.worktree_path.clone())
+        } else if let Some(selected) = self.table_state.selected()
+            && let Some(agent) = self.agents.get(selected)
+        {
+            Some(agent.path.clone())
+        } else {
+            None
+        };
+
+        if let Some(path) = path {
+            let _ = crate::command::code::open_in_editor(&path);
+        }
+    }
+
     /// Send a key to the selected agent's pane
     pub fn send_key_to_selected(&self, key: &str) {
         if let Some(selected) = self.table_state.selected()

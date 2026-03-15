@@ -406,6 +406,17 @@ enum Commands {
         filter: Vec<String>,
     },
 
+    /// Open a worktree in VS Code
+    Code {
+        /// Worktree name (defaults to current directory)
+        #[arg(value_parser = WorktreeHandleParser::new())]
+        name: Option<String>,
+
+        /// Open the PR in VS Code instead of the worktree
+        #[arg(long)]
+        pr: bool,
+    },
+
     /// Get the filesystem path of a worktree
     Path {
         /// Worktree name (directory name)
@@ -762,6 +773,7 @@ pub fn run() -> Result<()> {
             keep_branch,
         } => command::remove::run(names, gone, all, force, keep_branch),
         Commands::List { pr, filter } => command::list::run(pr, &filter),
+        Commands::Code { name, pr } => command::code::run(name.as_deref(), pr),
         Commands::Path { name } => command::path::run(&name),
         Commands::Send { name, text, file } => {
             command::send::run(&name, text.as_deref(), file.as_deref())

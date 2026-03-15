@@ -30,6 +30,7 @@ pub enum Action {
     IncreasePreviewSize,
     DecreasePreviewSize,
     LoadWipDiff,
+    OpenInEditor,
     SendCommitDashboard,
     TriggerMergeDashboard,
 
@@ -161,6 +162,10 @@ pub fn apply_action(app: &mut App, action: Action) -> bool {
         }
         Action::LoadWipDiff => {
             app.load_diff(false);
+            false
+        }
+        Action::OpenInEditor => {
+            app.open_selected_in_editor();
             false
         }
         Action::SendCommitDashboard => {
