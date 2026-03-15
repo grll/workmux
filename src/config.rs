@@ -312,10 +312,11 @@ pub enum ThemeScheme {
     GraphiteCode,
     FestivalCircuit,
     TealDrift,
+    Flexoki,
 }
 
 impl ThemeScheme {
-    pub const ALL: [ThemeScheme; 12] = [
+    pub const ALL: [ThemeScheme; 13] = [
         ThemeScheme::Default,
         ThemeScheme::Emberforge,
         ThemeScheme::GlacierSignal,
@@ -328,6 +329,7 @@ impl ThemeScheme {
         ThemeScheme::GraphiteCode,
         ThemeScheme::FestivalCircuit,
         ThemeScheme::TealDrift,
+        ThemeScheme::Flexoki,
     ];
 
     pub fn next(self) -> Self {
@@ -350,6 +352,7 @@ impl ThemeScheme {
             ThemeScheme::GraphiteCode => "Graphite Code",
             ThemeScheme::FestivalCircuit => "Festival Circuit",
             ThemeScheme::TealDrift => "Teal Drift",
+            ThemeScheme::Flexoki => "Flexoki",
         }
     }
 
@@ -367,6 +370,7 @@ impl ThemeScheme {
             ThemeScheme::GraphiteCode => "graphite-code",
             ThemeScheme::FestivalCircuit => "festival-circuit",
             ThemeScheme::TealDrift => "teal-drift",
+            ThemeScheme::Flexoki => "flexoki",
         }
     }
 
@@ -3598,10 +3602,11 @@ sandbox:
                 | ThemeScheme::NightSorbet
                 | ThemeScheme::GraphiteCode
                 | ThemeScheme::FestivalCircuit
-                | ThemeScheme::TealDrift => {}
+                | ThemeScheme::TealDrift
+                | ThemeScheme::Flexoki => {}
             }
         }
-        assert_eq!(ThemeScheme::ALL.len(), 12);
+        assert_eq!(ThemeScheme::ALL.len(), 13);
     }
 
     #[test]

@@ -39,6 +39,8 @@ pub struct ThemePalette {
     pub danger: Color,
     /// Patch mode, merged PRs, waiting status, diff icons
     pub accent: Color,
+    /// Background for the preview pane (None = terminal default)
+    pub preview_bg: Option<Color>,
 }
 
 impl ThemePalette {
@@ -69,6 +71,8 @@ impl ThemePalette {
             (ThemeScheme::FestivalCircuit, ThemeMode::Light) => Self::festival_circuit_light(),
             (ThemeScheme::TealDrift, ThemeMode::Dark) => Self::teal_drift_dark(),
             (ThemeScheme::TealDrift, ThemeMode::Light) => Self::teal_drift_light(),
+            (ThemeScheme::Flexoki, ThemeMode::Dark) => Self::flexoki_dark(),
+            (ThemeScheme::Flexoki, ThemeMode::Light) => Self::flexoki_light(),
         }
     }
 
@@ -91,6 +95,7 @@ impl ThemePalette {
             warning: Color::Rgb(249, 226, 175),
             danger: Color::Rgb(237, 135, 150),
             accent: Color::Rgb(203, 166, 247),
+            preview_bg: None,
         }
     }
 
@@ -111,6 +116,7 @@ impl ThemePalette {
             warning: Color::Rgb(223, 142, 29),
             danger: Color::Rgb(210, 15, 57),
             accent: Color::Rgb(136, 57, 239),
+            preview_bg: None,
         }
     }
 
@@ -133,6 +139,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 189, 92),
             danger: Color::Rgb(228, 108, 92),
             accent: Color::Rgb(220, 136, 108),
+            preview_bg: None,
         }
     }
 
@@ -153,6 +160,7 @@ impl ThemePalette {
             warning: Color::Rgb(180, 120, 20),
             danger: Color::Rgb(190, 60, 45),
             accent: Color::Rgb(175, 85, 55),
+            preview_bg: None,
         }
     }
 
@@ -175,6 +183,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 197, 108),
             danger: Color::Rgb(255, 122, 122),
             accent: Color::Rgb(153, 170, 255),
+            preview_bg: None,
         }
     }
 
@@ -195,6 +204,7 @@ impl ThemePalette {
             warning: Color::Rgb(185, 130, 30),
             danger: Color::Rgb(200, 55, 55),
             accent: Color::Rgb(80, 90, 200),
+            preview_bg: None,
         }
     }
 
@@ -217,6 +227,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 179, 0),
             danger: Color::Rgb(255, 75, 75),
             accent: Color::Rgb(166, 97, 255),
+            preview_bg: None,
         }
     }
 
@@ -237,6 +248,7 @@ impl ThemePalette {
             warning: Color::Rgb(190, 125, 0),
             danger: Color::Rgb(210, 35, 35),
             accent: Color::Rgb(110, 50, 210),
+            preview_bg: None,
         }
     }
 
@@ -259,6 +271,7 @@ impl ThemePalette {
             warning: Color::Rgb(206, 177, 115),
             danger: Color::Rgb(186, 132, 135),
             accent: Color::Rgb(161, 149, 188),
+            preview_bg: None,
         }
     }
 
@@ -279,6 +292,7 @@ impl ThemePalette {
             warning: Color::Rgb(155, 125, 50),
             danger: Color::Rgb(150, 75, 80),
             accent: Color::Rgb(105, 90, 145),
+            preview_bg: None,
         }
     }
 
@@ -301,6 +315,7 @@ impl ThemePalette {
             warning: Color::Rgb(248, 191, 89),
             danger: Color::Rgb(255, 110, 87),
             accent: Color::Rgb(132, 209, 255),
+            preview_bg: None,
         }
     }
 
@@ -321,6 +336,7 @@ impl ThemePalette {
             warning: Color::Rgb(175, 125, 20),
             danger: Color::Rgb(200, 55, 35),
             accent: Color::Rgb(45, 130, 195),
+            preview_bg: None,
         }
     }
 
@@ -343,6 +359,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 167, 46),
             danger: Color::Rgb(255, 74, 138),
             accent: Color::Rgb(202, 79, 255),
+            preview_bg: None,
         }
     }
 
@@ -363,6 +380,7 @@ impl ThemePalette {
             warning: Color::Rgb(185, 115, 10),
             danger: Color::Rgb(205, 30, 85),
             accent: Color::Rgb(140, 35, 210),
+            preview_bg: None,
         }
     }
 
@@ -385,6 +403,7 @@ impl ThemePalette {
             warning: Color::Rgb(218, 169, 88),
             danger: Color::Rgb(191, 111, 88),
             accent: Color::Rgb(166, 131, 173),
+            preview_bg: None,
         }
     }
 
@@ -405,6 +424,7 @@ impl ThemePalette {
             warning: Color::Rgb(165, 118, 30),
             danger: Color::Rgb(160, 65, 45),
             accent: Color::Rgb(115, 75, 125),
+            preview_bg: None,
         }
     }
 
@@ -427,6 +447,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 196, 160),
             danger: Color::Rgb(255, 155, 173),
             accent: Color::Rgb(205, 180, 255),
+            preview_bg: None,
         }
     }
 
@@ -447,6 +468,7 @@ impl ThemePalette {
             warning: Color::Rgb(185, 125, 55),
             danger: Color::Rgb(200, 65, 85),
             accent: Color::Rgb(130, 95, 200),
+            preview_bg: None,
         }
     }
 
@@ -469,6 +491,7 @@ impl ThemePalette {
             warning: Color::Rgb(171, 179, 187),
             danger: Color::Rgb(146, 153, 161),
             accent: Color::Rgb(232, 236, 240),
+            preview_bg: None,
         }
     }
 
@@ -489,6 +512,7 @@ impl ThemePalette {
             warning: Color::Rgb(100, 108, 118),
             danger: Color::Rgb(120, 128, 138),
             accent: Color::Rgb(60, 66, 76),
+            preview_bg: None,
         }
     }
 
@@ -511,6 +535,7 @@ impl ThemePalette {
             warning: Color::Rgb(255, 156, 63),
             danger: Color::Rgb(255, 92, 132),
             accent: Color::Rgb(178, 101, 255),
+            preview_bg: None,
         }
     }
 
@@ -531,6 +556,7 @@ impl ThemePalette {
             warning: Color::Rgb(190, 105, 15),
             danger: Color::Rgb(205, 40, 75),
             accent: Color::Rgb(120, 50, 210),
+            preview_bg: None,
         }
     }
 
@@ -554,6 +580,7 @@ impl ThemePalette {
             warning: Color::Rgb(200, 180, 120),
             danger: Color::Rgb(220, 120, 120),
             accent: Color::Rgb(180, 140, 200),
+            preview_bg: None,
         }
     }
 
@@ -574,6 +601,84 @@ impl ThemePalette {
             warning: Color::Rgb(140, 105, 30),
             danger: Color::Rgb(180, 50, 50),
             accent: Color::Rgb(115, 75, 145),
+            preview_bg: None,
+        }
+    }
+
+    // ── Flexoki ─────────────────────────────────────────────────
+    // https://stephango.com/flexoki
+
+    fn flexoki_dark() -> Self {
+        Self {
+            // base-950: #1C1B1A
+            current_row_bg: Color::Rgb(28, 27, 26),
+            // base-900: #282726
+            highlight_row_bg: Color::Rgb(40, 39, 38),
+            // base-50: #F2F0E5
+            current_worktree_fg: Color::Rgb(242, 240, 229),
+            // base-500: #878580
+            dimmed: Color::Rgb(135, 133, 128),
+            // base-200: #CECDC3
+            text: Color::Rgb(206, 205, 195),
+            // base-700: #575653
+            border: Color::Rgb(87, 86, 83),
+            // base-600: #6F6E69
+            help_border: Color::Rgb(111, 110, 105),
+            // base-500: #878580
+            help_muted: Color::Rgb(135, 133, 128),
+            // blue-400: #4385BE
+            header: Color::Rgb(67, 133, 190),
+            // yellow-400: #AD8301
+            keycap: Color::Rgb(173, 131, 1),
+            // cyan-400: #3AA99F
+            info: Color::Rgb(58, 169, 159),
+            // green-400: #879A39
+            success: Color::Rgb(135, 154, 57),
+            // orange-400: #BC5215
+            warning: Color::Rgb(188, 82, 21),
+            // red-400: #D14D41
+            danger: Color::Rgb(209, 77, 65),
+            // purple-400: #8B7EC8
+            accent: Color::Rgb(139, 126, 200),
+            preview_bg: None,
+        }
+    }
+
+    /// Flexoki Light palette
+    fn flexoki_light() -> Self {
+        Self {
+            // green-50 tinted toward base-50
+            current_row_bg: Color::Rgb(237, 238, 207),
+            // base-100: #E6E4D9
+            highlight_row_bg: Color::Rgb(230, 228, 217),
+            // black: #100F0F
+            current_worktree_fg: Color::Rgb(16, 15, 15),
+            // base-500: #878580
+            dimmed: Color::Rgb(135, 133, 128),
+            // black: #100F0F
+            text: Color::Rgb(16, 15, 15),
+            // base-300: #B7B5AC
+            border: Color::Rgb(183, 181, 172),
+            // base-400: #9F9D96 (slightly darker for contrast)
+            help_border: Color::Rgb(159, 157, 150),
+            // base-500: #878580
+            help_muted: Color::Rgb(135, 133, 128),
+            // blue-600: #205EA6
+            header: Color::Rgb(32, 94, 166),
+            // yellow-600: #AD8301
+            keycap: Color::Rgb(173, 131, 1),
+            // cyan-600: #24837B
+            info: Color::Rgb(36, 131, 123),
+            // green-600: #66800B
+            success: Color::Rgb(102, 128, 11),
+            // orange-600: #BC5215
+            warning: Color::Rgb(188, 82, 21),
+            // red-600: #AF3029
+            danger: Color::Rgb(175, 48, 41),
+            // purple-600: #5E409D
+            accent: Color::Rgb(94, 64, 157),
+            // base-50: #F2F0E5
+            preview_bg: Some(Color::Rgb(242, 240, 229)),
         }
     }
 }

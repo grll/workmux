@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Cell, Paragraph, Row, Table, Wrap},
+    widgets::{Block, Cell, Paragraph, Row, Table},
 };
 use std::collections::{BTreeMap, HashSet};
 
@@ -57,168 +57,8 @@ pub fn render_dashboard(f: &mut Frame, app: &mut App) {
     } else if app.input_mode {
         f.render_widget(render_footer_input(app), chunks[footer_index]);
     } else {
-        let mut spans = vec![
-            Span::styled("  [i]", Style::default().fg(Color::Green)),
-            Span::raw(" input  "),
-            Span::styled("[d]", Style::default().fg(Color::Yellow)),
-            Span::raw(" diff  "),
-            Span::styled("[e]", Style::default().fg(Color::Yellow)),
-            Span::raw(" code  "),
-            Span::styled("[1-9]", Style::default().fg(Color::Yellow)),
-            Span::raw(" jump  "),
-        ];
-
-        // Only show peek command if backend supports preview
-        if supports_preview {
-            spans.extend(vec![
-                Span::styled("[p]", Style::default().fg(Color::Cyan)),
-                Span::raw(" peek  "),
-            ]);
-        }
-
-        spans.extend(vec![
-            Span::styled("[s]", Style::default().fg(Color::Cyan)),
-            Span::raw(" sort: "),
-            Span::styled(app.sort_mode.label(), Style::default().fg(Color::Green)),
-            Span::raw("  "),
-            Span::styled("[F]", Style::default().fg(Color::Cyan)),
-            Span::raw(" scope: "),
-        ]);
-
-        let scope_color = if app.scope_mode.label() == "all" {
-            app.palette.dimmed
-        } else {
-            Color::Yellow
-        };
-        spans.push(Span::styled(
-            app.scope_mode.label(),
-            Style::default().fg(scope_color),
-        ));
-
-        spans.extend(vec![
-            Span::raw("  "),
-            Span::styled("[f]", Style::default().fg(Color::Cyan)),
-            Span::raw(" stale: "),
-        ]);
-
-        if app.hide_stale {
-            spans.push(Span::styled("hidden", Style::default().fg(Color::Yellow)));
-        } else {
-            spans.push(Span::styled(
-                "shown",
-                Style::default().fg(app.palette.dimmed),
-            ));
-        }
-
-        // Show active filter indicator
-        if !app.filter_text.is_empty() {
-            spans.extend(vec![
-                Span::raw("  "),
-                Span::styled("[/]", Style::default().fg(Color::Yellow)),
-                Span::raw(" filter: "),
-                Span::styled(app.filter_text.as_str(), Style::default().fg(Color::Yellow)),
-            ]);
-        }
-
-        spans.extend(vec![
-            Span::raw("  "),
-            Span::styled("[c]", Style::default().fg(Color::Green)),
-            Span::raw(" commit  "),
-            Span::styled("[m]", Style::default().fg(Color::Yellow)),
-            Span::raw(" merge  "),
-            Span::styled("[Enter]", Style::default().fg(Color::Cyan)),
-            Span::raw(" go  "),
-            Span::styled("[q]", Style::default().fg(Color::Cyan)),
-            Span::raw(" quit"),
-        ]);
-
-        Paragraph::new(Line::from(spans))
-    };
-    f.render_widget(footer_text, chunks[footer_index]);
->>>>>>> 4d1c8b5 (feat(dashboard): add [e] code hint to footer bar)
-=======
         render_footer_normal(f, app, chunks[footer_index]);
     }
-=======
-        let mut spans = vec![
-            Span::styled("  [i]", Style::default().fg(Color::Green)),
-            Span::raw(" input  "),
-            Span::styled("[d]", Style::default().fg(Color::Yellow)),
-            Span::raw(" diff  "),
-            Span::styled("[e]", Style::default().fg(Color::Yellow)),
-            Span::raw(" code  "),
-            Span::styled("[1-9]", Style::default().fg(Color::Yellow)),
-            Span::raw(" jump  "),
-        ];
-
-        // Only show peek command if backend supports preview
-        if supports_preview {
-            spans.extend(vec![
-                Span::styled("[p]", Style::default().fg(Color::Cyan)),
-                Span::raw(" peek  "),
-            ]);
-        }
-
-        spans.extend(vec![
-            Span::styled("[s]", Style::default().fg(Color::Cyan)),
-            Span::raw(" sort: "),
-            Span::styled(app.sort_mode.label(), Style::default().fg(Color::Green)),
-            Span::raw("  "),
-            Span::styled("[F]", Style::default().fg(Color::Cyan)),
-            Span::raw(" scope: "),
-        ]);
-
-        let scope_color = if app.scope_mode.label() == "all" {
-            app.palette.dimmed
-        } else {
-            Color::Yellow
-        };
-        spans.push(Span::styled(
-            app.scope_mode.label(),
-            Style::default().fg(scope_color),
-        ));
-
-        spans.extend(vec![
-            Span::raw("  "),
-            Span::styled("[f]", Style::default().fg(Color::Cyan)),
-            Span::raw(" stale: "),
-        ]);
-
-        if app.hide_stale {
-            spans.push(Span::styled("hidden", Style::default().fg(Color::Yellow)));
-        } else {
-            spans.push(Span::styled(
-                "shown",
-                Style::default().fg(app.palette.dimmed),
-            ));
-        }
-
-        // Show active filter indicator
-        if !app.filter_text.is_empty() {
-            spans.extend(vec![
-                Span::raw("  "),
-                Span::styled("[/]", Style::default().fg(Color::Yellow)),
-                Span::raw(" filter: "),
-                Span::styled(app.filter_text.as_str(), Style::default().fg(Color::Yellow)),
-            ]);
-        }
-
-        spans.extend(vec![
-            Span::raw("  "),
-            Span::styled("[c]", Style::default().fg(Color::Green)),
-            Span::raw(" commit  "),
-            Span::styled("[m]", Style::default().fg(Color::Yellow)),
-            Span::raw(" merge  "),
-            Span::styled("[Enter]", Style::default().fg(Color::Cyan)),
-            Span::raw(" go  "),
-            Span::styled("[q]", Style::default().fg(Color::Cyan)),
-            Span::raw(" quit"),
-        ]);
-
-        Paragraph::new(Line::from(spans))
-    };
-    f.render_widget(footer_text, chunks[footer_index]);
->>>>>>> 4d1c8b5 (feat(dashboard): add [e] code hint to footer bar)
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -557,10 +397,15 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
         )
     };
 
+    let block_style = match app.palette.preview_bg {
+        Some(bg) => Style::default().bg(bg),
+        None => Style::default(),
+    };
     let block = Block::bordered()
         .title(title)
         .title_style(title_style)
-        .border_style(border_style);
+        .border_style(border_style)
+        .style(block_style);
 
     // Calculate the inner area to determine scroll offset
     let inner_area = block.inner(area);
@@ -577,7 +422,16 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 // Parse ANSI escape sequences to get colored text
                 match trimmed.into_text() {
-                    Ok(text) => {
+                    Ok(mut text) => {
+                        // Strip background colors from captured terminal output so
+                        // the text blends with the preview pane background.
+                        if app.palette.preview_bg.is_some() {
+                            for line in &mut text.lines {
+                                for span in &mut line.spans {
+                                    span.style.bg = None;
+                                }
+                            }
+                        }
                         let count = text.lines.len() as u16;
                         (text, count)
                     }
@@ -593,35 +447,14 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
         (_, None) => (Text::raw("(no agent selected)"), 1),
     };
 
-    // Calculate wrapped line count so scroll-to-bottom works with long lines
-    let wrapped_line_count = if inner_area.width > 0 {
-        text.lines
-            .iter()
-            .map(|line| {
-                let w = line.width();
-                let width = inner_area.width as usize;
-                if w <= width {
-                    1u16
-                } else {
-                    ((w - 1) / width + 1) as u16
-                }
-            })
-            .sum::<u16>()
-    } else {
-        line_count
-    };
-
     // Update line count for scroll calculations
-    app.preview_line_count = wrapped_line_count;
+    app.preview_line_count = line_count;
 
     // Calculate scroll offset: use manual scroll if set, otherwise auto-scroll to bottom
-    let max_scroll = wrapped_line_count.saturating_sub(inner_area.height);
+    let max_scroll = line_count.saturating_sub(inner_area.height);
     let scroll_offset = app.preview_scroll.unwrap_or(max_scroll);
 
-    let paragraph = Paragraph::new(text)
-        .block(block)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll_offset, 0));
+    let paragraph = Paragraph::new(text).block(block).scroll((scroll_offset, 0));
 
     f.render_widget(paragraph, area);
 }
