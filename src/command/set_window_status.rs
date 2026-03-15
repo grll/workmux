@@ -62,6 +62,17 @@ pub fn run(cmd: SetWindowStatusCommand) -> Result<()> {
 
             // Persist to state store so the dashboard sees this agent
             crate::state::persist_agent_update(&*mux, &pane_id, Some(status), None);
+
+            // Desktop notification for terminal statuses
+            if auto_clear {
+                let label = match status {
+                    AgentStatus::Waiting => "waiting",
+                    AgentStatus::Done => "done",
+                    _ => unreachable!(),
+                };
+                let window_name = mux.current_window_name().ok().flatten();
+                crate::notify::notify_agent_status(label, window_name.as_deref());
+            }
         }
     }
 

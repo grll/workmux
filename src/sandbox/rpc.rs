@@ -419,6 +419,13 @@ fn handle_set_status(status: &str, ctx: &RpcContext) -> RpcResponse {
                     None,
                 );
             }
+
+            // Desktop notification for done/waiting
+            if auto_clear {
+                let window_name = ctx.mux.current_window_name().ok().flatten();
+                crate::notify::notify_agent_status(status, window_name.as_deref());
+            }
+
             RpcResponse::Ok
         }
         Err(e) => RpcResponse::Error {
