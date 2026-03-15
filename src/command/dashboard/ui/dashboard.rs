@@ -57,8 +57,168 @@ pub fn render_dashboard(f: &mut Frame, app: &mut App) {
     } else if app.input_mode {
         f.render_widget(render_footer_input(app), chunks[footer_index]);
     } else {
+        let mut spans = vec![
+            Span::styled("  [i]", Style::default().fg(Color::Green)),
+            Span::raw(" input  "),
+            Span::styled("[d]", Style::default().fg(Color::Yellow)),
+            Span::raw(" diff  "),
+            Span::styled("[e]", Style::default().fg(Color::Yellow)),
+            Span::raw(" code  "),
+            Span::styled("[1-9]", Style::default().fg(Color::Yellow)),
+            Span::raw(" jump  "),
+        ];
+
+        // Only show peek command if backend supports preview
+        if supports_preview {
+            spans.extend(vec![
+                Span::styled("[p]", Style::default().fg(Color::Cyan)),
+                Span::raw(" peek  "),
+            ]);
+        }
+
+        spans.extend(vec![
+            Span::styled("[s]", Style::default().fg(Color::Cyan)),
+            Span::raw(" sort: "),
+            Span::styled(app.sort_mode.label(), Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled("[F]", Style::default().fg(Color::Cyan)),
+            Span::raw(" scope: "),
+        ]);
+
+        let scope_color = if app.scope_mode.label() == "all" {
+            app.palette.dimmed
+        } else {
+            Color::Yellow
+        };
+        spans.push(Span::styled(
+            app.scope_mode.label(),
+            Style::default().fg(scope_color),
+        ));
+
+        spans.extend(vec![
+            Span::raw("  "),
+            Span::styled("[f]", Style::default().fg(Color::Cyan)),
+            Span::raw(" stale: "),
+        ]);
+
+        if app.hide_stale {
+            spans.push(Span::styled("hidden", Style::default().fg(Color::Yellow)));
+        } else {
+            spans.push(Span::styled(
+                "shown",
+                Style::default().fg(app.palette.dimmed),
+            ));
+        }
+
+        // Show active filter indicator
+        if !app.filter_text.is_empty() {
+            spans.extend(vec![
+                Span::raw("  "),
+                Span::styled("[/]", Style::default().fg(Color::Yellow)),
+                Span::raw(" filter: "),
+                Span::styled(app.filter_text.as_str(), Style::default().fg(Color::Yellow)),
+            ]);
+        }
+
+        spans.extend(vec![
+            Span::raw("  "),
+            Span::styled("[c]", Style::default().fg(Color::Green)),
+            Span::raw(" commit  "),
+            Span::styled("[m]", Style::default().fg(Color::Yellow)),
+            Span::raw(" merge  "),
+            Span::styled("[Enter]", Style::default().fg(Color::Cyan)),
+            Span::raw(" go  "),
+            Span::styled("[q]", Style::default().fg(Color::Cyan)),
+            Span::raw(" quit"),
+        ]);
+
+        Paragraph::new(Line::from(spans))
+    };
+    f.render_widget(footer_text, chunks[footer_index]);
+>>>>>>> 4d1c8b5 (feat(dashboard): add [e] code hint to footer bar)
+=======
         render_footer_normal(f, app, chunks[footer_index]);
     }
+=======
+        let mut spans = vec![
+            Span::styled("  [i]", Style::default().fg(Color::Green)),
+            Span::raw(" input  "),
+            Span::styled("[d]", Style::default().fg(Color::Yellow)),
+            Span::raw(" diff  "),
+            Span::styled("[e]", Style::default().fg(Color::Yellow)),
+            Span::raw(" code  "),
+            Span::styled("[1-9]", Style::default().fg(Color::Yellow)),
+            Span::raw(" jump  "),
+        ];
+
+        // Only show peek command if backend supports preview
+        if supports_preview {
+            spans.extend(vec![
+                Span::styled("[p]", Style::default().fg(Color::Cyan)),
+                Span::raw(" peek  "),
+            ]);
+        }
+
+        spans.extend(vec![
+            Span::styled("[s]", Style::default().fg(Color::Cyan)),
+            Span::raw(" sort: "),
+            Span::styled(app.sort_mode.label(), Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled("[F]", Style::default().fg(Color::Cyan)),
+            Span::raw(" scope: "),
+        ]);
+
+        let scope_color = if app.scope_mode.label() == "all" {
+            app.palette.dimmed
+        } else {
+            Color::Yellow
+        };
+        spans.push(Span::styled(
+            app.scope_mode.label(),
+            Style::default().fg(scope_color),
+        ));
+
+        spans.extend(vec![
+            Span::raw("  "),
+            Span::styled("[f]", Style::default().fg(Color::Cyan)),
+            Span::raw(" stale: "),
+        ]);
+
+        if app.hide_stale {
+            spans.push(Span::styled("hidden", Style::default().fg(Color::Yellow)));
+        } else {
+            spans.push(Span::styled(
+                "shown",
+                Style::default().fg(app.palette.dimmed),
+            ));
+        }
+
+        // Show active filter indicator
+        if !app.filter_text.is_empty() {
+            spans.extend(vec![
+                Span::raw("  "),
+                Span::styled("[/]", Style::default().fg(Color::Yellow)),
+                Span::raw(" filter: "),
+                Span::styled(app.filter_text.as_str(), Style::default().fg(Color::Yellow)),
+            ]);
+        }
+
+        spans.extend(vec![
+            Span::raw("  "),
+            Span::styled("[c]", Style::default().fg(Color::Green)),
+            Span::raw(" commit  "),
+            Span::styled("[m]", Style::default().fg(Color::Yellow)),
+            Span::raw(" merge  "),
+            Span::styled("[Enter]", Style::default().fg(Color::Cyan)),
+            Span::raw(" go  "),
+            Span::styled("[q]", Style::default().fg(Color::Cyan)),
+            Span::raw(" quit"),
+        ]);
+
+        Paragraph::new(Line::from(spans))
+    };
+    f.render_widget(footer_text, chunks[footer_index]);
+>>>>>>> 4d1c8b5 (feat(dashboard): add [e] code hint to footer bar)
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -539,6 +699,8 @@ fn render_footer_normal(f: &mut Frame, app: &App, area: Rect) {
     s.extend(cmd("i".into(), "Input".into()));
     s.push(pipe());
     s.extend(cmd("d".into(), "Diff".into()));
+    s.push(pipe());
+    s.extend(cmd("e".into(), "Code".into()));
     s.push(pipe());
     s.extend(cmd("1-9".into(), "Jump".into()));
     s.push(pipe());
