@@ -277,14 +277,14 @@ pub fn build_docker_run_args(
     // must come BEFORE bind mounts (worktree, git) that overlap the same
     // parent -- Docker processes mounts in order and more-specific bind mounts
     // overlay on top of the tmpfs.
-    if let Some((ref host_config_dir, _)) = agent_config_symlink {
-        if let Some(home_dir) = host_config_dir.parent() {
-            args.push("--mount".to_string());
-            args.push(format!(
-                "type=tmpfs,target={},tmpfs-mode=1777",
-                home_dir.display()
-            ));
-        }
+    if let Some((ref host_config_dir, _)) = agent_config_symlink
+        && let Some(home_dir) = host_config_dir.parent()
+    {
+        args.push("--mount".to_string());
+        args.push(format!(
+            "type=tmpfs,target={},tmpfs-mode=1777",
+            home_dir.display()
+        ));
     }
 
     // Mirror mount worktree
