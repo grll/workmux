@@ -380,9 +380,12 @@ fn run_container(
         .map(|(k, v)| (k.as_str(), v.as_str()))
         .collect();
 
-    let agent = crate::multiplexer::agent::resolve_profile(config.agent.as_deref()).name();
-
     let user_command = command.join(" ");
+
+    // Detect agent from the actual command (e.g., "codex --yolo" → "codex"),
+    // not from config.agent, because `wm add -a codex` overrides the global
+    // agent setting for this specific worktree.
+    let agent = crate::multiplexer::agent::resolve_profile(Some(&user_command)).name();
     let shim_host_dir = _shim_dir.as_ref().map(|d| d.path().join("shims/bin"));
     let mut docker_args = build_docker_run_args(
         &user_command,
