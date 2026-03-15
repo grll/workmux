@@ -247,6 +247,46 @@ pub fn build_docker_run_args(
         args.push(format!("{}:{}", uid, gid));
     }
 
+    // Pre-compute agent config symlink info.  When the host config dir
+    // (e.g. /Users/foo/.claude) differs from the container target
+    // (/tmp/.claude), we need a symlink so absolute paths in agent metadata
+    // (like installed_plugins.json) resolve.  Computing this early lets us
+    // insert a tmpfs for the parent directory BEFORE bind mounts that might
+    // overlap it (worktree, git).
+    let agent_config_target = match agent {
+        "claude" => Some("/tmp/.claude"),
+        "gemini" => Some("/tmp/.gemini"),
+        "codex" => Some("/tmp/.codex"),
+        "opencode" => Some("/tmp/.local/share/opencode"),
+        _ => None,
+    };
+    let agent_config_symlink: Option<(PathBuf, String)> = config
+        .resolved_agent_config_dir(agent)
+        .zip(agent_config_target)
+        .and_then(|(config_dir, target)| {
+            let host_path = config_dir.to_string_lossy().to_string();
+            if host_path != target {
+                Some((config_dir, target.to_string()))
+            } else {
+                None
+            }
+        });
+
+    // When we need to symlink the host config path, mount a tiny tmpfs at the
+    // host home directory so the non-root user can create the symlink.  This
+    // must come BEFORE bind mounts (worktree, git) that overlap the same
+    // parent -- Docker processes mounts in order and more-specific bind mounts
+    // overlay on top of the tmpfs.
+    if let Some((ref host_config_dir, _)) = agent_config_symlink {
+        if let Some(home_dir) = host_config_dir.parent() {
+            args.push("--mount".to_string());
+            args.push(format!(
+                "type=tmpfs,target={},tmpfs-mode=1777",
+                home_dir.display()
+            ));
+        }
+    }
+
     // Mirror mount worktree
     args.push("--mount".to_string());
     args.push(format!(
@@ -342,37 +382,17 @@ pub fn build_docker_run_args(
         false
     };
 
-    // Mount agent config directory.
-    // When the host path differs from the container target (e.g.,
-    // /Users/foo/.claude vs /tmp/.claude), record it so we can create a
-    // symlink at container startup.  This lets absolute paths stored in
-    // agent metadata (like Claude's installed_plugins.json) resolve inside
-    // the container without mounting the config dir at a second location.
-    let agent_config_symlink: Option<(String, String)> =
-        if let Some(config_dir) = config.resolved_agent_config_dir(agent) {
-            let target = match agent {
-                "claude" => "/tmp/.claude",
-                "gemini" => "/tmp/.gemini",
-                "codex" => "/tmp/.codex",
-                "opencode" => "/tmp/.local/share/opencode",
-                _ => unreachable!(), // resolved_agent_config_dir returns None for unknown agents
-            };
-            let _ = std::fs::create_dir_all(&config_dir);
-            args.push("--mount".to_string());
-            args.push(format!(
-                "type=bind,source={},target={}",
-                config_dir.display(),
-                target
-            ));
-            let host_path = config_dir.to_string_lossy().to_string();
-            if host_path != target {
-                Some((host_path, target.to_string()))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+    // Mount agent config directory
+    if let Some(config_dir) = config.resolved_agent_config_dir(agent) {
+        let target = agent_config_target.unwrap(); // safe: resolved_agent_config_dir returns None for unknown agents
+        let _ = std::fs::create_dir_all(&config_dir);
+        args.push("--mount".to_string());
+        args.push(format!(
+            "type=bind,source={},target={}",
+            config_dir.display(),
+            target
+        ));
+    }
 
     // Terminal vars
     for term_var in ["TERM", "COLORTERM"] {
@@ -422,15 +442,13 @@ pub fn build_docker_run_args(
         init_commands
             .push("ln -sf /tmp/.claude-sandbox-config/claude.json /tmp/.claude.json".to_string());
     }
-    if let Some((host_path, target)) = &agent_config_symlink {
-        if let Some(parent) = Path::new(host_path).parent() {
-            init_commands.push(format!(
-                "mkdir -p '{}' && ln -sf '{}' '{}'",
-                parent.display(),
-                target,
-                host_path,
-            ));
-        }
+    if let Some((host_config_dir, target)) = &agent_config_symlink {
+        // The tmpfs at the parent directory makes this writable for non-root.
+        init_commands.push(format!(
+            "ln -sf '{}' '{}'",
+            target,
+            host_config_dir.display(),
+        ));
     }
     let wrapped_command = if init_commands.is_empty() {
         command.to_string()
@@ -801,12 +819,22 @@ mod tests {
         )
         .unwrap();
 
-        let cmd_arg = args.last().unwrap();
         let home = home::home_dir().unwrap();
         let host_claude = home.join(".claude");
 
         if host_claude.to_string_lossy() != "/tmp/.claude" {
+            let args_str = args.join(" ");
+
+            // tmpfs at home dir should be present before bind mounts
+            let tmpfs_arg = format!("type=tmpfs,target={},tmpfs-mode=1777", home.display());
+            assert!(
+                args_str.contains(&tmpfs_arg),
+                "should have tmpfs at home dir, got: {}",
+                args_str
+            );
+
             // Symlink init should be prepended to the command
+            let cmd_arg = args.last().unwrap();
             assert!(
                 cmd_arg.contains("ln -sf '/tmp/.claude'"),
                 "should create symlink to /tmp/.claude, got: {}",
