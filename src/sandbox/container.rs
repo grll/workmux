@@ -342,23 +342,37 @@ pub fn build_docker_run_args(
         false
     };
 
-    // Mount agent config directory
-    if let Some(config_dir) = config.resolved_agent_config_dir(agent) {
-        let target = match agent {
-            "claude" => "/tmp/.claude",
-            "gemini" => "/tmp/.gemini",
-            "codex" => "/tmp/.codex",
-            "opencode" => "/tmp/.local/share/opencode",
-            _ => unreachable!(), // resolved_agent_config_dir returns None for unknown agents
+    // Mount agent config directory.
+    // When the host path differs from the container target (e.g.,
+    // /Users/foo/.claude vs /tmp/.claude), record it so we can create a
+    // symlink at container startup.  This lets absolute paths stored in
+    // agent metadata (like Claude's installed_plugins.json) resolve inside
+    // the container without mounting the config dir at a second location.
+    let agent_config_symlink: Option<(String, String)> =
+        if let Some(config_dir) = config.resolved_agent_config_dir(agent) {
+            let target = match agent {
+                "claude" => "/tmp/.claude",
+                "gemini" => "/tmp/.gemini",
+                "codex" => "/tmp/.codex",
+                "opencode" => "/tmp/.local/share/opencode",
+                _ => unreachable!(), // resolved_agent_config_dir returns None for unknown agents
+            };
+            let _ = std::fs::create_dir_all(&config_dir);
+            args.push("--mount".to_string());
+            args.push(format!(
+                "type=bind,source={},target={}",
+                config_dir.display(),
+                target
+            ));
+            let host_path = config_dir.to_string_lossy().to_string();
+            if host_path != target {
+                Some((host_path, target.to_string()))
+            } else {
+                None
+            }
+        } else {
+            None
         };
-        let _ = std::fs::create_dir_all(&config_dir);
-        args.push("--mount".to_string());
-        args.push(format!(
-            "type=bind,source={},target={}",
-            config_dir.display(),
-            target
-        ));
-    }
 
     // Terminal vars
     for term_var in ["TERM", "COLORTERM"] {
@@ -399,15 +413,30 @@ pub fn build_docker_run_args(
     // Command
     // No shell quoting needed -- callers use Command::args() which handles escaping
     //
-    // For Apple Container with Claude, we symlink the config file from the
-    // mounted directory since Apple Container doesn't support file mounts.
-    let wrapped_command = if needs_claude_config_symlink {
-        format!(
-            "ln -sf /tmp/.claude-sandbox-config/claude.json /tmp/.claude.json; {}",
-            command
-        )
-    } else {
+    // Prepend symlink setup commands so that:
+    // - Apple Container: config file symlink (doesn't support file mounts)
+    // - Agent config: symlink from host path so absolute paths in agent
+    //   metadata (e.g., plugin installPath) resolve inside the container
+    let mut init_commands: Vec<String> = Vec::new();
+    if needs_claude_config_symlink {
+        init_commands
+            .push("ln -sf /tmp/.claude-sandbox-config/claude.json /tmp/.claude.json".to_string());
+    }
+    if let Some((host_path, target)) = &agent_config_symlink {
+        if let Some(parent) = Path::new(host_path).parent() {
+            init_commands.push(format!(
+                "mkdir -p '{}' && ln -sf '{}' '{}'",
+                parent.display(),
+                target,
+                host_path,
+            ));
+        }
+    }
+    let wrapped_command = if init_commands.is_empty() {
         command.to_string()
+    } else {
+        init_commands.push(command.to_string());
+        init_commands.join("; ")
     };
 
     if network_deny {
@@ -560,7 +589,14 @@ mod tests {
         assert!(args.contains(&"test-image:latest".to_string()));
         assert!(args.contains(&"sh".to_string()));
         assert!(args.contains(&"-c".to_string()));
-        assert!(args.contains(&"claude".to_string()));
+        // The command is the last arg; it ends with the actual command and may
+        // be prefixed with a symlink setup when host config path != /tmp/.claude.
+        let cmd_arg = args.last().unwrap();
+        assert!(
+            cmd_arg.ends_with("claude"),
+            "command arg should end with 'claude', got: {}",
+            cmd_arg
+        );
     }
 
     #[test]
@@ -748,6 +784,41 @@ mod tests {
         // PATH should include shim dir first
         let path_arg = args.iter().find(|a| a.starts_with("PATH=")).unwrap();
         assert!(path_arg.starts_with("PATH=/tmp/.workmux-shims/bin:"));
+    }
+
+    #[test]
+    fn test_build_args_agent_config_symlink() {
+        let config = make_config();
+        let args = build_docker_run_args(
+            "claude",
+            &config,
+            "claude",
+            Path::new("/tmp/project"),
+            Path::new("/tmp/project"),
+            &[],
+            None,
+            false,
+        )
+        .unwrap();
+
+        let cmd_arg = args.last().unwrap();
+        let home = home::home_dir().unwrap();
+        let host_claude = home.join(".claude");
+
+        if host_claude.to_string_lossy() != "/tmp/.claude" {
+            // Symlink init should be prepended to the command
+            assert!(
+                cmd_arg.contains("ln -sf '/tmp/.claude'"),
+                "should create symlink to /tmp/.claude, got: {}",
+                cmd_arg
+            );
+            assert!(
+                cmd_arg.contains(&host_claude.to_string_lossy().to_string()),
+                "should reference host config path {}, got: {}",
+                host_claude.display(),
+                cmd_arg
+            );
+        }
     }
 
     #[test]
@@ -1055,7 +1126,12 @@ mod tests {
         assert_eq!(args[image_idx + 1], "network-init.sh");
         assert_eq!(args[image_idx + 2], "sh");
         assert_eq!(args[image_idx + 3], "-c");
-        assert_eq!(args[image_idx + 4], "claude");
+        let cmd_arg = &args[image_idx + 4];
+        assert!(
+            cmd_arg.ends_with("claude"),
+            "command arg should end with 'claude', got: {}",
+            cmd_arg
+        );
     }
 
     #[test]
