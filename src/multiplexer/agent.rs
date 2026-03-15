@@ -138,6 +138,10 @@ impl AgentProfile for CodexProfile {
         "codex"
     }
 
+    fn needs_auto_status(&self) -> bool {
+        true
+    }
+
     fn skip_permissions_flag(&self) -> Option<&'static str> {
         Some("--yolo")
     }
@@ -307,7 +311,7 @@ mod tests {
         let profile = CodexProfile;
         assert_eq!(profile.name(), "codex");
         assert!(!profile.needs_bang_delay());
-        assert!(!profile.needs_auto_status());
+        assert!(profile.needs_auto_status());
         assert_eq!(
             profile.prompt_argument("PROMPT.md"),
             "-- \"$(cat PROMPT.md)\""

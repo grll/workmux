@@ -50,6 +50,7 @@ pub fn skills_dir(agent: Agent) -> Option<PathBuf> {
     let home = home::home_dir()?;
     match agent {
         Agent::Claude => Some(home.join(".claude/skills")),
+        Agent::Codex => Some(home.join(".codex/skills")),
         Agent::OpenCode => Some(home.join(".config/opencode/skills")),
         Agent::Copilot => None,
     }
@@ -232,6 +233,14 @@ mod tests {
     fn test_skills_dir_opencode() {
         let dir = skills_dir(Agent::OpenCode);
         assert!(dir.is_some());
+    }
+
+    #[test]
+    fn test_skills_dir_codex() {
+        let dir = skills_dir(Agent::Codex);
+        assert!(dir.is_some());
+        let path = dir.unwrap();
+        assert!(path.ends_with(".codex/skills"));
     }
 
     #[test]
