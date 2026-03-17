@@ -755,7 +755,9 @@ impl App {
         };
 
         if let Some(path) = path {
-            let _ = crate::command::code::open_in_editor(&path);
+            if let Err(e) = crate::command::code::open_in_editor(&path) {
+                tracing::warn!("Failed to open editor: {:#}", e);
+            }
         }
     }
 

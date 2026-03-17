@@ -15,12 +15,16 @@ use crate::git;
 /// The `SSH_ALIAS` env var is set via SSH config (`SetEnv SSH_ALIAS=host`).
 pub fn open_in_editor(path: &Path) -> Result<()> {
     let path_str = path.to_string_lossy();
+    let env = resolve_remote_env();
 
-    if let Ok(alias) = std::env::var("SSH_ALIAS") {
-        ensure_kitty_remote()?;
+    if let Some(alias) = env.ssh_alias {
+        let listen_on = env
+            .kitty_listen_on
+            .context("KITTY_LISTEN_ON not available")?;
+        ensure_kitty_remote(&listen_on)?;
         let code_cmd = format!("code --remote 'ssh-remote+{}' '{}'", alias, path_str);
         info!(path = %path_str, alias = %alias, "code:open via kitty remote");
-        run_kitten_background(&["zsh", "-lc", &code_cmd])?;
+        run_kitten_background(&["zsh", "-lic", &code_cmd], &listen_on)?;
     } else {
         info!(path = %path_str, "code:open locally");
         let output = Command::new("code")
@@ -49,10 +53,14 @@ pub fn open_pr_in_editor(worktree_path: &Path) -> Result<()> {
         pr_url
     );
 
-    if std::env::var("SSH_ALIAS").is_ok() {
-        ensure_kitty_remote()?;
+    let env = resolve_remote_env();
+    if let Some(_alias) = env.ssh_alias {
+        let listen_on = env
+            .kitty_listen_on
+            .context("KITTY_LISTEN_ON not available")?;
+        ensure_kitty_remote(&listen_on)?;
         info!(pr_url = %pr_url, "code:open PR via kitty remote");
-        run_kitten_background(&["open", &vscode_uri])?;
+        run_kitten_background(&["open", &vscode_uri], &listen_on)?;
     } else {
         info!(pr_url = %pr_url, "code:open PR locally");
         let output = Command::new("open")
@@ -82,11 +90,12 @@ fn get_pr_url(worktree_path: &Path) -> Option<String> {
 }
 
 /// Run a command on the local machine via kitty remote control.
-fn run_kitten_background(cmd_args: &[&str]) -> Result<()> {
+fn run_kitten_background(cmd_args: &[&str], listen_on: &str) -> Result<()> {
     let mut args = vec!["@", "launch", "--type=background", "--"];
     args.extend_from_slice(cmd_args);
     let output = Command::new("kitten")
         .args(&args)
+        .env("KITTY_LISTEN_ON", listen_on)
         .output()
         .context("Failed to run kitten @ launch")?;
     if !output.status.success() {
@@ -97,9 +106,10 @@ fn run_kitten_background(cmd_args: &[&str]) -> Result<()> {
 }
 
 /// Verify that kitty remote control is available.
-fn ensure_kitty_remote() -> Result<()> {
+fn ensure_kitty_remote(listen_on: &str) -> Result<()> {
     let output = Command::new("kitten")
         .args(["@", "ls"])
+        .env("KITTY_LISTEN_ON", listen_on)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
@@ -112,6 +122,69 @@ fn ensure_kitty_remote() -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// SSH-related environment resolved for the current process.
+struct RemoteEnv {
+    ssh_alias: Option<String>,
+    kitty_listen_on: Option<String>,
+}
+
+/// Resolve SSH_ALIAS and KITTY_LISTEN_ON, preferring fresh values from the
+/// tmux client process over potentially stale inherited env vars.
+///
+/// Inside tmux over SSH, the inherited env vars may be stale from a previous
+/// SSH connection: the kitty SSH kitten assigns a new reverse-forwarded port
+/// on each reconnection, and SSH_ALIAS may not be in the tmux server's
+/// environment at all. This resolves fresh values by reading the tmux client
+/// process's environment from procfs (one tmux call + one file read).
+fn resolve_remote_env() -> RemoteEnv {
+    let inherited = RemoteEnv {
+        ssh_alias: std::env::var("SSH_ALIAS").ok(),
+        kitty_listen_on: std::env::var("KITTY_LISTEN_ON").ok(),
+    };
+
+    if std::env::var("TMUX").is_err() {
+        return inherited;
+    }
+
+    let Some(environ) = read_tmux_client_environ() else {
+        return inherited;
+    };
+
+    let find_var = |name: &str| -> Option<String> {
+        let prefix = format!("{name}=");
+        environ
+            .split(|&b| b == 0)
+            .filter_map(|entry| std::str::from_utf8(entry).ok())
+            .find_map(|s| s.strip_prefix(&prefix).map(String::from))
+    };
+
+    let fresh_listen_on = find_var("KITTY_LISTEN_ON");
+    if let (Some(fresh), Some(stale)) = (&fresh_listen_on, &inherited.kitty_listen_on) {
+        if fresh != stale {
+            info!(stale = %stale, fresh = %fresh, "resolved fresh KITTY_LISTEN_ON from tmux client");
+        }
+    }
+
+    RemoteEnv {
+        ssh_alias: find_var("SSH_ALIAS").or(inherited.ssh_alias),
+        kitty_listen_on: fresh_listen_on.or(inherited.kitty_listen_on),
+    }
+}
+
+/// Read raw environ bytes from the tmux client process via procfs.
+fn read_tmux_client_environ() -> Option<Vec<u8>> {
+    let output = Command::new("tmux")
+        .args(["display-message", "-p", "#{client_pid}"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())?;
+    let pid = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    if pid.is_empty() {
+        return None;
+    }
+    std::fs::read(format!("/proc/{pid}/environ")).ok()
 }
 
 /// CLI entry point
