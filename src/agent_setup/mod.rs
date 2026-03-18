@@ -8,6 +8,7 @@ pub mod claude;
 pub mod codex;
 pub mod copilot;
 pub mod opencode;
+pub mod pi;
 
 use anyhow::{Context, Result};
 use console::style;
@@ -25,6 +26,7 @@ pub enum Agent {
     Codex,
     Copilot,
     OpenCode,
+    Pi,
 }
 
 impl Agent {
@@ -34,6 +36,7 @@ impl Agent {
             Agent::Codex => "Codex",
             Agent::Copilot => "Copilot CLI",
             Agent::OpenCode => "OpenCode",
+            Agent::Pi => "pi",
         }
     }
 }
@@ -99,6 +102,18 @@ pub fn check_all() -> Vec<AgentCheck> {
         });
     }
 
+    if let Some(reason) = pi::detect() {
+        let status = match pi::check() {
+            Ok(s) => s,
+            Err(e) => StatusCheck::Error(e.to_string()),
+        };
+        results.push(AgentCheck {
+            agent: Agent::Pi,
+            reason,
+            status,
+        });
+    }
+
     if let Some(reason) = opencode::detect() {
         let status = match opencode::check() {
             Ok(s) => s,
@@ -121,6 +136,7 @@ pub fn install(agent: Agent) -> Result<String> {
         Agent::Codex => codex::install(),
         Agent::Copilot => copilot::install(),
         Agent::OpenCode => opencode::install(),
+        Agent::Pi => pi::install(),
     }
 }
 
@@ -378,6 +394,7 @@ mod tests {
         assert_eq!(Agent::Codex.name(), "Codex");
         assert_eq!(Agent::Copilot.name(), "Copilot CLI");
         assert_eq!(Agent::OpenCode.name(), "OpenCode");
+        assert_eq!(Agent::Pi.name(), "pi");
     }
 
     #[test]
@@ -392,6 +409,7 @@ mod tests {
             serde_json::to_string(&Agent::OpenCode).unwrap(),
             "\"opencode\""
         );
+        assert_eq!(serde_json::to_string(&Agent::Pi).unwrap(), "\"pi\"");
     }
 
     #[test]
@@ -404,6 +422,8 @@ mod tests {
         assert_eq!(agent, Agent::Copilot);
         let agent: Agent = serde_json::from_str("\"opencode\"").unwrap();
         assert_eq!(agent, Agent::OpenCode);
+        let agent: Agent = serde_json::from_str("\"pi\"").unwrap();
+        assert_eq!(agent, Agent::Pi);
     }
 
     #[test]
@@ -428,10 +448,11 @@ mod tests {
         let mut state = SetupState::default();
         state.declined.insert(Agent::Claude);
         state.declined.insert(Agent::OpenCode);
+        state.declined.insert(Agent::Pi);
 
         let json = serde_json::to_string_pretty(&state).unwrap();
         let deserialized: SetupState = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.declined.len(), 2);
+        assert_eq!(deserialized.declined.len(), 3);
         assert!(deserialized.declined.contains(&Agent::Claude));
         assert!(deserialized.declined.contains(&Agent::OpenCode));
     }
