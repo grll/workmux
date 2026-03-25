@@ -394,6 +394,14 @@ pub trait Multiplexer: Send + Sync {
                     } else {
                         resolved.command.clone()
                     }
+                } else if options.yolo && is_agent_pane {
+                    // Inject skip-permissions flag without sandbox (--yolo flag)
+                    let profile = crate::multiplexer::agent::resolve_profile(pane_agent);
+                    if let Some(flag) = profile.skip_permissions_flag() {
+                        util::inject_skip_permissions_flag(&resolved.command, flag)
+                    } else {
+                        resolved.command.clone()
+                    }
                 } else {
                     resolved.command.clone()
                 };

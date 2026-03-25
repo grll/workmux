@@ -178,6 +178,7 @@ pub fn run(
     options.focus_window = !setup.background;
     options.open_if_exists = setup.open_if_exists;
     options.mode = mode;
+    options.yolo = setup.yolo;
 
     // If using --auto-name and config has auto_name.background = true, run in background
     if auto_name && options.focus_window {

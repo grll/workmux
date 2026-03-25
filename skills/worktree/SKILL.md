@@ -93,6 +93,12 @@ workmux add feature-x -b -P /tmp/tmp.abc123.md
 workmux add feature-y -b -P /tmp/tmp.def456.md
 ```
 
+Use `-Y` (yolo) to skip agent permission prompts for autonomous execution:
+
+```bash
+workmux add feature-x -b -Y -P /tmp/tmp.abc123.md
+```
+
 After creating the worktrees, inform the user which branches were created.
 
 **Remember:** Your task is COMPLETE once worktrees are created. Do NOT implement

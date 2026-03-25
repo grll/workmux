@@ -45,6 +45,10 @@ pub struct SetupFlags {
     /// Enable sandbox mode even when disabled in config
     #[arg(short = 'S', long)]
     pub sandbox: bool,
+
+    /// Skip agent permission prompts (e.g., --dangerously-skip-permissions for Claude, --yolo for Codex)
+    #[arg(short = 'Y', long)]
+    pub yolo: bool,
 }
 
 #[derive(clap::Args, Debug)]

@@ -46,6 +46,7 @@ Key flags:
 - `-e, --prompt-editor`: write prompt in $EDITOR
 - `-A, --auto-name`: generate branch name from prompt via LLM
 - `-a <agent>`: override the agent (can specify multiple for multi-worktree)
+- `-Y, --yolo`: skip agent permission prompts (injects `--dangerously-skip-permissions` for Claude, `--yolo` for Codex, etc.)
 - `-w, --with-changes`: move uncommitted changes to the new worktree
 - `--base <branch>`: branch from a specific base
 - `--name <name>`: override the handle name

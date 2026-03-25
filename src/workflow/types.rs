@@ -90,6 +90,8 @@ pub struct SetupOptions {
     pub open_if_exists: bool,
     /// Mode for tmux operations: window (default) or session
     pub mode: MuxMode,
+    /// If true, inject skip-permissions flags for agent panes (e.g., --dangerously-skip-permissions).
+    pub yolo: bool,
 }
 
 impl SetupOptions {
@@ -106,6 +108,7 @@ impl SetupOptions {
             config_root: None,
             open_if_exists: false,
             mode: MuxMode::default(),
+            yolo: false,
         }
     }
 
@@ -121,6 +124,7 @@ impl SetupOptions {
             config_root: None,
             open_if_exists: false,
             mode: MuxMode::default(),
+            yolo: false,
         }
     }
 
@@ -142,6 +146,7 @@ impl SetupOptions {
             config_root: None,
             open_if_exists: false,
             mode: MuxMode::default(),
+            yolo: false,
         }
     }
 }

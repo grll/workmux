@@ -68,6 +68,7 @@ Flags:
 - `-b`: background (do not switch to the new window)
 - `-P <file>`: prompt file (contents sent to agent on launch)
 - `-p <text>`: inline prompt (short tasks only)
+- `-Y, --yolo`: skip agent permission prompts (auto-injects the right flag per agent)
 - `--name <handle>`: explicit handle name (otherwise derived from branch)
 - `--base <branch>`: base branch to branch from (default: current)
 
