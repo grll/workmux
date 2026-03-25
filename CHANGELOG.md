@@ -17,6 +17,78 @@ description: Release notes and version history for workmux
 
 # Changelog
 
+## v0.1.150 (2026-03-25)
+
+- Add `--continue` flag to `workmux open` to resume the last agent conversation
+  when opening a worktree
+- List: show worktree age in `wm ls` output as a new AGE column with
+  human-friendly relative time (e.g., 2h, 3d, 1w)
+
+## v0.1.149 (2026-03-24)
+
+- Dashboard: show elapsed time for pending PR checks and the name of failing
+  checks across all views (PR column, agents pane, worktree info panel)
+
+## v0.1.148 (2026-03-24)
+
+- Dashboard: add base branch picker (`b`) to change a worktree's base branch
+  from either the worktrees or agents tab
+- Dashboard: open PR checks page in browser with `O` (shift-o) to quickly see
+  why checks failed
+- Dashboard: agent task descriptions now stay up to date in real time instead of
+  showing the initial title
+- Fix a crash caused by mouse coordinate overflow when using tmux 3.6a
+
+## v0.1.147 (2026-03-23)
+
+- Dashboard: open a worktree's pull request in the browser with `o`
+
+## v0.1.146 (2026-03-23)
+
+- Dashboard: add project picker (`p`) to switch between projects' worktrees
+- Dashboard: show PR status and CI checks in worktree table and preview panel
+- Dashboard: add worktree sort modes (`s`) to cycle between natural and
+  newest-first ordering
+- Dashboard: add age column to worktree table
+- Dashboard: add close mux window action (`c`) to stop an agent while keeping
+  the worktree
+- Dashboard: redesigned worktree preview with info panel and styled git log
+
+## v0.1.145 (2026-03-23)
+
+- Dashboard: add worktree view as a second tab (press Tab to switch between
+  Agents and Worktrees)
+- Dashboard: add bulk sweep (R) to identify and remove worktrees ready for
+  cleanup based on merged/closed PRs, deleted remote branches, or locally merged
+  branches
+- Dashboard: add X hotkey to kill an agent directly
+- Dashboard: add worktree remove (r) with a context-aware confirmation modal
+  that warns about uncommitted changes or unmerged commits
+- Add `workmux list --json` flag for machine-readable output
+
+## v0.1.144 (2026-03-22)
+
+- Add `sync-files` command to re-apply file operations (copy/symlink) to
+  existing worktrees, with `--all` flag to sync all worktrees at once
+
+## v0.1.143 (2026-03-21)
+
+- Fix `focus: true` not switching to the correct pane in session mode
+  ([#86](https://github.com/raine/workmux/issues/86))
+
+## v0.1.142 (2026-03-20)
+
+- Add automatic worktree naming support for the pi agent
+  ([#84](https://github.com/raine/workmux/issues/84))
+
+## v0.1.141 (2026-03-19)
+
+- Add `--prompt-file-only` flag for editors with embedded agents (e.g., neovim
+  with an agent plugin) that consume prompts from the filesystem instead of pane
+  injection ([#82](https://github.com/raine/workmux/issues/82))
+- `workmux open` now accepts multiple worktree names in a single command (e.g.,
+  `workmux open foo bar`)
+
 ## v0.1.140 (2026-03-17)
 
 - Add pi agent support for status tracking and setup

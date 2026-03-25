@@ -10,9 +10,39 @@ use ratatui::{
 };
 use std::collections::{BTreeMap, HashSet};
 
-use super::super::app::App;
+use super::super::app::{App, DashboardTab};
 use super::super::spinner::SPINNER_FRAMES;
+use super::format;
 use super::format::{format_git_status, format_pr_status};
+use super::worktree::{render_worktree_preview, render_worktree_table};
+
+/// Render the tab header line showing Agents | Worktrees with active tab highlighted.
+fn render_tab_header(f: &mut Frame, app: &App, area: Rect) {
+    let active_style = Style::default()
+        .fg(app.palette.header)
+        .add_modifier(Modifier::BOLD);
+    let inactive_style = Style::default().fg(app.palette.dimmed);
+    let pipe_style = Style::default().fg(app.palette.border);
+    let rule_style = Style::default().fg(app.palette.border);
+
+    let (agents_style, worktrees_style) = match app.active_tab {
+        DashboardTab::Agents => (active_style, inactive_style),
+        DashboardTab::Worktrees => (inactive_style, active_style),
+    };
+
+    let tabs = Line::from(vec![
+        Span::raw("  "),
+        Span::styled("Agents", agents_style),
+        Span::styled(" \u{2502} ", pipe_style),
+        Span::styled("Worktrees", worktrees_style),
+    ]);
+    let rule = Line::from(Span::styled(
+        "\u{2500}".repeat(area.width as usize),
+        rule_style,
+    ));
+
+    f.render_widget(Paragraph::new(vec![tabs, rule]), area);
+}
 
 /// Render the dashboard view (table + preview + footer).
 pub fn render_dashboard(f: &mut Frame, app: &mut App) {
@@ -21,43 +51,79 @@ pub fn render_dashboard(f: &mut Frame, app: &mut App) {
     // Check if backend supports preview
     let supports_preview = app.mux.supports_preview();
 
-    // Layout: table (top), preview (bottom, only if supported), footer
-    let chunks = if !supports_preview {
-        // Zellij: no preview section
-        Layout::vertical([
-            Constraint::Min(5),    // Table (takes all space except footer)
-            Constraint::Length(1), // Footer
-        ])
-        .split(area)
+    // Outer layout: fixed-height tab header and footer, flexible content area.
+    // Fill(1) guarantees the content takes exactly the remaining space.
+    let outer = Layout::vertical([
+        Constraint::Length(2), // Tab header + spacer
+        Constraint::Fill(1),   // Content (table + optional preview)
+        Constraint::Length(1), // Footer
+    ])
+    .split(area);
+
+    let tab_area = outer[0];
+    let content_area = outer[1];
+    let footer_area = outer[2];
+
+    // Split content area into table + preview (or just table if no preview)
+    let (table_area, preview_area) = if !supports_preview {
+        (content_area, None)
     } else {
-        // Other multiplexers: include preview
         let table_size = 100u16.saturating_sub(app.preview_size as u16);
-        Layout::vertical([
-            Constraint::Percentage(table_size), // Table (top)
-            Constraint::Min(5),                 // Preview (bottom, at least 5 lines)
-            Constraint::Length(1),              // Footer
+        // Use Fill() proportional constraints to split space safely without overflow
+        let content_chunks = Layout::vertical([
+            Constraint::Fill(table_size),              // Table
+            Constraint::Fill(app.preview_size as u16), // Preview
         ])
-        .split(area)
+        .split(content_area);
+        (content_chunks[0], Some(content_chunks[1]))
     };
 
-    // Table
-    render_table(f, app, chunks[0]);
+    // Tab header
+    render_tab_header(f, app, tab_area);
+
+    // Table (agents or worktrees based on active tab)
+    match app.active_tab {
+        DashboardTab::Agents => render_table(f, app, table_area),
+        DashboardTab::Worktrees => render_worktree_table(f, app, table_area),
+    }
 
     // Preview (only for backends that support it)
-    let footer_index = if supports_preview {
-        render_preview(f, app, chunks[1]);
-        2 // Footer is at index 2 when preview is shown
-    } else {
-        1 // Footer is at index 1 when preview is hidden
-    };
+    if let Some(preview) = preview_area {
+        match app.active_tab {
+            DashboardTab::Agents => render_preview(f, app, preview),
+            DashboardTab::Worktrees => render_worktree_preview(f, app, preview),
+        }
+    }
 
-    // Footer - show different help based on mode
-    if app.filter_active {
-        f.render_widget(render_footer_filter(app), chunks[footer_index]);
-    } else if app.input_mode {
-        f.render_widget(render_footer_input(app), chunks[footer_index]);
+    // Footer - show status message if active, otherwise mode-specific help
+    if let Some((msg, _)) = &app.status_message {
+        let p = &app.palette;
+        f.render_widget(
+            Paragraph::new(Line::from(vec![Span::styled(
+                format!("  {msg}"),
+                Style::default().fg(p.text),
+            )])),
+            footer_area,
+        );
     } else {
-        render_footer_normal(f, app, chunks[footer_index]);
+        match app.active_tab {
+            DashboardTab::Agents => {
+                if app.filter_active {
+                    f.render_widget(render_footer_filter(app), footer_area);
+                } else if app.input_mode {
+                    f.render_widget(render_footer_input(app), footer_area);
+                } else {
+                    render_footer_normal(f, app, footer_area);
+                }
+            }
+            DashboardTab::Worktrees => {
+                if app.worktree_filter_active {
+                    f.render_widget(render_worktree_footer_filter(app), footer_area);
+                } else {
+                    render_worktree_footer_normal(f, app, footer_area);
+                }
+            }
+        }
     }
 }
 
@@ -260,7 +326,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             })
             .max()
             .unwrap_or(4)
-            .clamp(4, 16) // Increased from 12 to accommodate check icons + counts
+            .clamp(4, 20) // Accommodate check icons + counts + inline timer
             + 1
     } else {
         0
@@ -397,15 +463,23 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
         )
     };
 
-    let block_style = match app.palette.preview_bg {
-        Some(bg) => Style::default().bg(bg),
-        None => Style::default(),
-    };
-    let block = Block::bordered()
+    let mut block = Block::bordered()
         .title(title)
         .title_style(title_style)
-        .border_style(border_style)
-        .style(block_style);
+        .border_style(border_style);
+
+    // Add right-aligned PR check detail to the preview border
+    if let Some(agent) = selected_agent
+        && let Some(pr) = app.get_pr_for_agent(agent)
+    {
+        let detail_spans = format::format_pr_details(pr, &app.palette);
+        if !detail_spans.is_empty() {
+            let mut title_spans = vec![Span::raw(" ")];
+            title_spans.extend(detail_spans);
+            title_spans.push(Span::raw(" "));
+            block = block.title_top(Line::from(title_spans).right_aligned());
+        }
+    }
 
     // Calculate the inner area to determine scroll offset
     let inner_area = block.inner(area);
@@ -436,9 +510,11 @@ fn render_preview(f: &mut Frame, app: &mut App, area: Rect) {
                         (text, count)
                     }
                     Err(_) => {
-                        // Fallback to plain text if ANSI parsing fails
-                        let count = trimmed.lines().count() as u16;
-                        (Text::raw(trimmed), count)
+                        // Fallback: strip ANSI escapes to prevent raw control
+                        // sequences from corrupting the terminal display
+                        let safe = super::super::ansi::strip_ansi_escapes(trimmed);
+                        let count = safe.lines().count() as u16;
+                        (Text::raw(safe), count)
                     }
                 }
             }
@@ -535,6 +611,8 @@ fn render_footer_normal(f: &mut Frame, app: &App, area: Rect) {
     s.push(pipe());
     s.extend(cmd("e".into(), "Code".into()));
     s.push(pipe());
+    s.extend(cmd("o".into(), "PR".into()));
+    s.push(pipe());
     s.extend(cmd("1-9".into(), "Jump".into()));
     s.push(pipe());
     s.extend(toggle("s".into(), "Sort".into(), sort.to_string(), true));
@@ -557,9 +635,7 @@ fn render_footer_normal(f: &mut Frame, app: &App, area: Rect) {
         s.extend(cmd("/".into(), app.filter_text.clone()));
     }
     s.push(pipe());
-    s.extend(cmd("c".into(), "Commit".into()));
-    s.push(pipe());
-    s.extend(cmd("m".into(), "Merge".into()));
+    s.extend(cmd("Tab".into(), "Worktrees".into()));
     s.push(pipe());
     s.extend(cmd("q".into(), "Quit".into()));
 
@@ -568,7 +644,92 @@ fn render_footer_normal(f: &mut Frame, app: &App, area: Rect) {
         Span::styled("?", dimmed),
         Span::styled(" Help ", bold_text),
     ]);
-    let cols = Layout::horizontal([Constraint::Min(0), Constraint::Length(7)]).split(area);
+    let cols = Layout::horizontal([Constraint::Fill(1), Constraint::Length(7)]).split(area);
+
+    f.render_widget(Paragraph::new(Line::from(s)), cols[0]);
+    f.render_widget(Paragraph::new(right), cols[1]);
+}
+
+/// Worktree filter mode footer
+fn render_worktree_footer_filter<'a>(app: &'a App) -> Paragraph<'a> {
+    Paragraph::new(Line::from(vec![
+        Span::styled(
+            "  /",
+            Style::default()
+                .fg(app.palette.keycap)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(app.worktree_filter_text.as_str()),
+        Span::styled("_", Style::default().fg(app.palette.keycap)),
+        Span::raw("  "),
+        Span::styled("Enter", Style::default().fg(app.palette.dimmed)),
+        Span::raw(" accept  "),
+        Span::styled("Esc", Style::default().fg(app.palette.dimmed)),
+        Span::raw(" clear"),
+    ]))
+}
+
+/// Worktree normal mode footer
+fn render_worktree_footer_normal(f: &mut Frame, app: &App, area: Rect) {
+    let p = &app.palette;
+
+    let dimmed = Style::default().fg(p.dimmed);
+    let bold_text = Style::default().fg(p.text).add_modifier(Modifier::BOLD);
+    let active_style = Style::default().fg(p.accent);
+    let pipe_style = Style::default().fg(p.border);
+
+    let cmd = |k: String, l: String| -> Vec<Span<'static>> {
+        vec![
+            Span::styled(k, dimmed),
+            Span::styled(format!(" {}", l), bold_text),
+        ]
+    };
+    let toggle = |k: String, l: String, v: String, active: bool| -> Vec<Span<'static>> {
+        vec![
+            Span::styled(k, dimmed),
+            Span::styled(format!(" {} ", l), bold_text),
+            Span::styled(
+                format!("({})", v),
+                if active { active_style } else { dimmed },
+            ),
+        ]
+    };
+    let pipe = || -> Span<'static> { Span::styled(" \u{2502} ", pipe_style) };
+
+    let sort = app.worktree_sort_mode.label();
+
+    let mut s: Vec<Span<'static>> = vec![Span::raw("  ")];
+    s.extend(cmd("o".into(), "PR".into()));
+    s.push(pipe());
+    s.extend(cmd("r".into(), "Remove".into()));
+    s.push(pipe());
+    s.extend(cmd("c".into(), "Close".into()));
+    s.push(pipe());
+    s.extend(cmd("R".into(), "Sweep".into()));
+    s.push(pipe());
+    s.extend(cmd("1-9".into(), "Jump".into()));
+    s.push(pipe());
+    s.extend(toggle("s".into(), "Sort".into(), sort.to_string(), true));
+    if !app.worktree_filter_text.is_empty() {
+        s.push(pipe());
+        s.extend(cmd("/".into(), app.worktree_filter_text.clone()));
+    } else {
+        s.push(pipe());
+        s.extend(cmd("/".into(), "Filter".into()));
+    }
+    s.push(pipe());
+    s.extend(cmd("p".into(), "Project".into()));
+    s.push(pipe());
+    s.extend(cmd("Tab".into(), "Agents".into()));
+    s.push(pipe());
+    s.extend(cmd("q".into(), "Quit".into()));
+
+    // Split footer: left commands, right-pinned help
+    let right = Line::from(vec![
+        Span::styled("?", dimmed),
+        Span::styled(" Help ", bold_text),
+    ]);
+    let cols = Layout::horizontal([Constraint::Fill(1), Constraint::Length(7)]).split(area);
 
     f.render_widget(Paragraph::new(Line::from(s)), cols[0]);
     f.render_widget(Paragraph::new(right), cols[1]);

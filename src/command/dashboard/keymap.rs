@@ -10,6 +10,8 @@ pub enum Context {
     DashboardNormal,
     DashboardInput,
     DashboardFilter,
+    WorktreeNormal,
+    WorktreeFilter,
     DiffNormal,
     Patch,
     Comment,
@@ -21,6 +23,8 @@ pub fn action_for_key(ctx: Context, key: KeyEvent) -> Option<Action> {
         Context::DashboardNormal => dashboard_normal_key(key),
         Context::DashboardInput => dashboard_input_key(key),
         Context::DashboardFilter => dashboard_filter_key(key),
+        Context::WorktreeNormal => worktree_normal_key(key),
+        Context::WorktreeFilter => dashboard_filter_key(key),
         Context::DiffNormal => diff_normal_key(key),
         Context::Patch => patch_key(key),
         Context::Comment => comment_key(key),
@@ -39,7 +43,8 @@ fn dashboard_normal_key(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('j') | KeyCode::Down => Some(Action::Next),
         KeyCode::Char('k') | KeyCode::Up => Some(Action::Previous),
         KeyCode::Enter => Some(Action::JumpToSelected),
-        KeyCode::Tab => Some(Action::JumpToLast),
+        KeyCode::Tab => Some(Action::SwitchTab),
+        KeyCode::Backspace => Some(Action::JumpToLast),
         KeyCode::Char('p') => Some(Action::PeekSelected),
         KeyCode::Char('s') => Some(Action::CycleSortMode),
         KeyCode::Char('F') => Some(Action::ToggleScopeFilter),
@@ -59,6 +64,11 @@ fn dashboard_normal_key(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('m') => Some(Action::TriggerMergeDashboard),
         KeyCode::Char('T') => Some(Action::CycleColorScheme),
         KeyCode::Char('/') => Some(Action::EnterFilterMode),
+        KeyCode::Char('o') => Some(Action::OpenPr),
+        KeyCode::Char('O') => Some(Action::OpenPrChecks),
+        KeyCode::Char('b') => Some(Action::ShowBaseBranchPicker),
+        KeyCode::Char('X') => Some(Action::KillSelected),
+        KeyCode::Char('R') => Some(Action::StartSweep),
         KeyCode::Char(c @ '1'..='9') => Some(Action::JumpToIndex((c as u8 - b'1') as usize)),
         _ => None,
     }
@@ -71,6 +81,38 @@ fn dashboard_filter_key(key: KeyEvent) -> Option<Action> {
         KeyCode::Backspace => Some(Action::FilterDeleteChar),
         KeyCode::Char('?') => Some(Action::ShowHelp),
         KeyCode::Char(c) => Some(Action::FilterAppendChar(c)),
+        _ => None,
+    }
+}
+
+fn worktree_normal_key(key: KeyEvent) -> Option<Action> {
+    match key.code {
+        KeyCode::Char('?') => Some(Action::ShowHelp),
+        KeyCode::Char('q') | KeyCode::Esc => Some(Action::Quit),
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => Some(Action::Quit),
+        KeyCode::Tab => Some(Action::SwitchTab),
+        KeyCode::Char('j') | KeyCode::Down => Some(Action::WorktreeNext),
+        KeyCode::Char('k') | KeyCode::Up => Some(Action::WorktreePrevious),
+        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(Action::WorktreeNext)
+        }
+        KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(Action::WorktreePrevious)
+        }
+        KeyCode::Enter => Some(Action::JumpToSelectedWorktree),
+        KeyCode::Char('o') => Some(Action::OpenPr),
+        KeyCode::Char('O') => Some(Action::OpenPrChecks),
+        KeyCode::Char('r') => Some(Action::RemoveSelectedWorktree),
+        KeyCode::Char('c') => Some(Action::CloseSelectedWorktreeWindow),
+        KeyCode::Char('R') => Some(Action::StartSweep),
+        KeyCode::Char('s') => Some(Action::CycleWorktreeSortMode),
+        KeyCode::Char('p') => Some(Action::ShowProjectPicker),
+        KeyCode::Char('b') => Some(Action::ShowBaseBranchPicker),
+        KeyCode::Char('/') => Some(Action::EnterFilterMode),
+        KeyCode::Char('T') => Some(Action::CycleColorScheme),
+        KeyCode::Char(c @ '1'..='9') => {
+            Some(Action::WorktreeJumpToIndex((c as u8 - b'1') as usize))
+        }
         _ => None,
     }
 }
@@ -156,7 +198,8 @@ pub fn help_rows(ctx: Context) -> Vec<(&'static str, &'static str)> {
             ("q/Esc", "Quit"),
             ("j/k/C-n/C-p", "Navigate up/down"),
             ("Enter", "Jump to agent"),
-            ("Tab", "Toggle last agent"),
+            ("Tab", "Switch view"),
+            ("Bksp", "Last agent"),
             ("p", "Peek agent (keep popup)"),
             ("s", "Cycle sort mode"),
             ("F", "Toggle session filter"),
@@ -168,15 +211,38 @@ pub fn help_rows(ctx: Context) -> Vec<(&'static str, &'static str)> {
             ("e", "Open in VS Code"),
             ("c", "Commit changes"),
             ("m", "Merge branch"),
+            ("b", "Change base branch"),
+            ("o", "Open PR in browser"),
+            ("O", "Open PR checks in browser"),
+            ("X", "Kill agent"),
+            ("R", "Sweep cleanup"),
             ("/", "Filter agents"),
             ("T", "Cycle theme"),
             ("1-9", "Quick jump"),
         ],
         Context::DashboardInput => vec![("Esc", "Exit input mode"), ("<keys>", "Send to agent")],
-        Context::DashboardFilter => vec![
+        Context::DashboardFilter | Context::WorktreeFilter => vec![
             ("Enter", "Accept filter"),
             ("Esc", "Clear filter"),
             ("<type>", "Filter text"),
+        ],
+        Context::WorktreeNormal => vec![
+            ("?", "Show help"),
+            ("q/Esc", "Quit"),
+            ("j/k/C-n/C-p", "Navigate up/down"),
+            ("Enter", "Jump to worktree"),
+            ("Tab", "Switch to agents"),
+            ("o", "Open PR in browser"),
+            ("O", "Open PR checks in browser"),
+            ("r", "Remove worktree"),
+            ("c", "Close mux window"),
+            ("R", "Sweep cleanup"),
+            ("s", "Cycle sort mode"),
+            ("b", "Change base branch"),
+            ("p", "Switch project"),
+            ("/", "Filter worktrees"),
+            ("T", "Cycle theme"),
+            ("1-9", "Quick jump"),
         ],
         Context::DiffNormal => vec![
             ("?", "Show help"),
@@ -219,6 +285,8 @@ mod tests {
         assert!(!help_rows(Context::DashboardNormal).is_empty());
         assert!(!help_rows(Context::DashboardInput).is_empty());
         assert!(!help_rows(Context::DashboardFilter).is_empty());
+        assert!(!help_rows(Context::WorktreeNormal).is_empty());
+        assert!(!help_rows(Context::WorktreeFilter).is_empty());
         assert!(!help_rows(Context::DiffNormal).is_empty());
         assert!(!help_rows(Context::Patch).is_empty());
         assert!(!help_rows(Context::Comment).is_empty());
@@ -230,6 +298,8 @@ mod tests {
             Context::DashboardNormal,
             Context::DashboardInput,
             Context::DashboardFilter,
+            Context::WorktreeNormal,
+            Context::WorktreeFilter,
             Context::DiffNormal,
             Context::Patch,
             Context::Comment,

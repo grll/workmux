@@ -398,6 +398,10 @@ pub fn run(
             .context("Prompt template uses undefined variables")?;
     }
 
+    // Determine prompt_file_only from CLI flag or config
+    let prompt_file_only =
+        prompt_args.prompt_file_only || initial_config.prompt_file_only.unwrap_or(false);
+
     // Create worktrees from specs
     let plan = CreationPlan {
         specs: &specs,
@@ -411,6 +415,7 @@ pub fn run(
         deferred_auto_name,
         max_concurrent: multi.max_concurrent,
         sandbox_override,
+        prompt_file_only,
     };
     plan.execute()
 }
@@ -539,6 +544,7 @@ struct CreationPlan<'a> {
     deferred_auto_name: bool,
     max_concurrent: Option<u32>,
     sandbox_override: bool,
+    prompt_file_only: bool,
 }
 
 impl<'a> CreationPlan<'a> {
@@ -638,6 +644,7 @@ impl<'a> CreationPlan<'a> {
                     options: self.options.clone(),
                     agent: spec.agent.as_deref(),
                     is_explicit_name: self.explicit_name.is_some(),
+                    prompt_file_only: self.prompt_file_only,
                 },
             )
             .with_context(|| {
@@ -741,6 +748,9 @@ fn run_add_via_rpc(
         bail!(
             "--session is not supported from inside a sandbox (host controls mode via its config)"
         );
+    }
+    if prompt_args.prompt_file_only {
+        bail!("--prompt-file-only is not supported from inside a sandbox");
     }
 
     // --- Resolve prompt via existing loader (handles -p, -P, -e) ---

@@ -16,6 +16,10 @@ pub struct CreateArgs<'a> {
     pub agent: Option<&'a str>,
     /// True if the handle was explicitly set via --name (skip auto-suffix on collision)
     pub is_explicit_name: bool,
+    /// Write prompt file without injecting into agent commands.
+    /// When true, the prompt file is written to .workmux/ but not passed to
+    /// setup_environment, so validation and agent injection are skipped.
+    pub prompt_file_only: bool,
 }
 
 /// Result of creating a worktree
@@ -92,6 +96,8 @@ pub struct SetupOptions {
     pub mode: MuxMode,
     /// If true, inject skip-permissions flags for agent panes (e.g., --dangerously-skip-permissions).
     pub yolo: bool,
+    /// If true, inject the agent's continue/resume flag to resume the last conversation.
+    pub continue_session: bool,
 }
 
 impl SetupOptions {
@@ -109,6 +115,7 @@ impl SetupOptions {
             open_if_exists: false,
             mode: MuxMode::default(),
             yolo: false,
+            continue_session: false,
         }
     }
 
@@ -125,6 +132,7 @@ impl SetupOptions {
             open_if_exists: false,
             mode: MuxMode::default(),
             yolo: false,
+            continue_session: false,
         }
     }
 
@@ -147,21 +155,31 @@ impl SetupOptions {
             open_if_exists: false,
             mode: MuxMode::default(),
             yolo: false,
+            continue_session: false,
         }
     }
 }
 
 /// Summary of agent statuses for a worktree (may have multiple agents)
+#[derive(Clone)]
 pub struct AgentStatusSummary {
     pub statuses: Vec<AgentStatus>,
 }
 
 /// List all worktrees with their status
+#[derive(Clone)]
 pub struct WorktreeInfo {
+    pub handle: String,
     pub branch: String,
     pub path: PathBuf,
+    pub is_main: bool,
+    pub mode: MuxMode,
     pub has_mux_window: bool,
     pub has_unmerged: bool,
     pub pr_info: Option<PrSummary>,
     pub agent_status: Option<AgentStatusSummary>,
+    /// Worktree directory creation time (Unix timestamp in seconds)
+    pub created_at: Option<u64>,
+    /// The base branch this worktree was created from (from git config)
+    pub base_branch: Option<String>,
 }

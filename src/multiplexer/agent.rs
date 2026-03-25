@@ -63,6 +63,14 @@ pub trait AgentProfile: Send + Sync {
     fn auto_name_command(&self) -> Option<&'static str> {
         None
     }
+
+    /// CLI flag to continue/resume the most recent conversation.
+    ///
+    /// Returns `None` for agents that don't support this, or a flag string
+    /// like `--continue` or `--resume` for agents that do.
+    fn continue_flag(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 // === Built-in Profiles ===
@@ -89,6 +97,10 @@ impl AgentProfile for ClaudeProfile {
     fn auto_name_command(&self) -> Option<&'static str> {
         Some("claude --model haiku -p")
     }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--continue")
+    }
 }
 
 pub struct GeminiProfile;
@@ -108,6 +120,10 @@ impl AgentProfile for GeminiProfile {
 
     fn auto_name_command(&self) -> Option<&'static str> {
         Some("gemini -m gemini-2.5-flash-lite -p")
+    }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--resume")
     }
 }
 
@@ -129,6 +145,10 @@ impl AgentProfile for OpenCodeProfile {
     fn auto_name_command(&self) -> Option<&'static str> {
         Some("opencode run")
     }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--continue")
+    }
 }
 
 pub struct CodexProfile;
@@ -148,6 +168,10 @@ impl AgentProfile for CodexProfile {
 
     fn auto_name_command(&self) -> Option<&'static str> {
         Some(r#"codex exec --config model_reasoning_effort="low" -m gpt-5.1-codex-mini"#)
+    }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("resume --last")
     }
 }
 
@@ -169,6 +193,10 @@ impl AgentProfile for KiroProfile {
     fn auto_name_command(&self) -> Option<&'static str> {
         Some("kiro-cli chat --no-interactive")
     }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--resume")
+    }
 }
 
 pub struct VibeProfile;
@@ -185,6 +213,10 @@ impl AgentProfile for VibeProfile {
     fn prompt_argument(&self, prompt_path: &str) -> String {
         format!("\"$(cat {})\"", prompt_path)
     }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--continue")
+    }
 }
 
 pub struct PiProfile;
@@ -200,6 +232,14 @@ impl AgentProfile for PiProfile {
 
     fn prompt_argument(&self, prompt_path: &str) -> String {
         format!("-p \"$(cat {})\"", prompt_path)
+    }
+
+    fn auto_name_command(&self) -> Option<&'static str> {
+        Some("pi -p")
+    }
+
+    fn continue_flag(&self) -> Option<&'static str> {
+        Some("--continue")
     }
 }
 
@@ -291,6 +331,7 @@ mod tests {
             Some("--dangerously-skip-permissions")
         );
         assert_eq!(profile.auto_name_command(), Some("claude --model haiku -p"));
+        assert_eq!(profile.continue_flag(), Some("--continue"));
     }
 
     #[test]
@@ -308,6 +349,7 @@ mod tests {
             profile.auto_name_command(),
             Some("gemini -m gemini-2.5-flash-lite -p")
         );
+        assert_eq!(profile.continue_flag(), Some("--resume"));
     }
 
     #[test]
@@ -321,6 +363,7 @@ mod tests {
             "--prompt \"$(cat PROMPT.md)\""
         );
         assert_eq!(profile.auto_name_command(), Some("opencode run"));
+        assert_eq!(profile.continue_flag(), Some("--continue"));
     }
 
     #[test]
@@ -338,6 +381,7 @@ mod tests {
             profile.auto_name_command(),
             Some(r#"codex exec --config model_reasoning_effort="low" -m gpt-5.1-codex-mini"#)
         );
+        assert_eq!(profile.continue_flag(), Some("resume --last"));
     }
 
     #[test]
@@ -353,6 +397,7 @@ mod tests {
             profile.auto_name_command(),
             Some("kiro-cli chat --no-interactive")
         );
+        assert_eq!(profile.continue_flag(), Some("--resume"));
     }
 
     #[test]
@@ -367,6 +412,7 @@ mod tests {
             Some("--agent auto-approve")
         );
         assert_eq!(profile.auto_name_command(), None);
+        assert_eq!(profile.continue_flag(), Some("--continue"));
     }
 
     #[test]
@@ -380,7 +426,8 @@ mod tests {
             "-p \"$(cat PROMPT.md)\""
         );
         assert_eq!(profile.skip_permissions_flag(), None);
-        assert_eq!(profile.auto_name_command(), None);
+        assert_eq!(profile.auto_name_command(), Some("pi -p"));
+        assert_eq!(profile.continue_flag(), Some("--continue"));
     }
 
     #[test]
@@ -394,6 +441,7 @@ mod tests {
             "-- \"$(cat PROMPT.md)\""
         );
         assert_eq!(profile.auto_name_command(), None);
+        assert_eq!(profile.continue_flag(), None);
     }
 
     // === resolve_profile tests ===

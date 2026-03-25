@@ -73,6 +73,11 @@ pub fn format_duration(secs: u64) -> String {
     format!("{:02}:{:02}:{:02}", hours, mins, secs)
 }
 
+/// Format an age in seconds as a compact relative string (e.g., "2h", "3d", "1w").
+pub fn format_age(secs: u64) -> String {
+    crate::util::format_compact_age(secs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

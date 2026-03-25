@@ -96,6 +96,8 @@ pub struct PaneSetupOptions<'a> {
     pub lima_vm_name: Option<&'a str>,
     /// If true, inject skip-permissions flags for agent panes even without sandbox.
     pub yolo: bool,
+    /// If true, inject the agent's continue/resume flag to resume the last conversation.
+    pub continue_session: bool,
 }
 
 /// Backend type for multiplexer selection

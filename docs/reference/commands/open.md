@@ -4,15 +4,15 @@ description: Open or switch to a tmux window for an existing worktree
 
 # open
 
-Opens or switches to a tmux window for a pre-existing git worktree. If the window already exists, switches to it. If not, creates a new window with the configured pane layout and environment.
+Opens or switches to a tmux window for a pre-existing git worktree. If the window already exists, switches to it. If not, creates a new window with the configured pane layout and environment. Accepts multiple names to open several worktrees at once.
 
 ```bash
-workmux open [name] [flags]
+workmux open [name...] [flags]
 ```
 
 ## Arguments
 
-- `[name]`: Worktree name (the directory name, which is also the tmux window name without the prefix). Optional with `--new` when run from inside a worktree.
+- `[name...]`: One or more worktree names (the directory name, which is also the tmux window name without the prefix). Optional with `--new` when run from inside a worktree.
 
 ## Options
 
@@ -24,7 +24,9 @@ workmux open [name] [flags]
 | `--force-files`            | Re-applies file copy/symlink operations. Useful for restoring a deleted `.env` file.                                                                                                                                          |
 | `-p, --prompt <text>`      | Provide an inline prompt for AI agent panes.                                                                                                                                                                                  |
 | `-P, --prompt-file <path>` | Provide a path to a file containing the prompt.                                                                                                                                                                               |
+| `-c, --continue`           | Resume the agent's most recent conversation in this worktree. Injects the appropriate flag for the configured agent (e.g., `--continue` for Claude, `--resume` for Gemini).                                                   |
 | `-e, --prompt-editor`      | Open your editor to write the prompt interactively.                                                                                                                                                                           |
+| `--prompt-file-only`       | Write the prompt file to the worktree without injecting it into agent commands.                                                                                                                                               |
 
 ## What happens
 
@@ -50,12 +52,18 @@ workmux open --new
 # Open in session mode (converts from window mode if needed)
 workmux open user-auth --session
 
-# Open with a prompt for AI agents
-workmux open user-auth -p "Continue implementing the login flow"
+# Resume the agent's last conversation
+workmux open user-auth --continue
+
+# Resume and send a follow-up prompt
+workmux open user-auth --continue -p "Continue implementing the login flow"
 
 # Open and re-run dependency installation
 workmux open user-auth --run-hooks
 
 # Open and restore configuration files
 workmux open user-auth --force-files
+
+# Open multiple worktrees at once
+workmux open user-auth api-refactor bugfix-login
 ```

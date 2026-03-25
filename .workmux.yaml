@@ -1,3 +1,5 @@
+theme: flexoki
+
 panes:
   - command: <agent> # Start the configured agent (e.g., claude)
     focus: true

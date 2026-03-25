@@ -337,6 +337,10 @@ files:
 
 Both `copy` and `symlink` accept glob patterns.
 
+To re-apply file operations to an existing worktree (e.g., after updating the
+config), run `workmux sync-files` from inside the worktree. Use `--all` to sync
+all worktrees at once.
+
 #### Lifecycle hooks
 
 Run commands at specific points in the worktree lifecycle, such as installing
@@ -523,6 +527,9 @@ immediately. If the branch doesn't exist, it will be created automatically.
   used as the prompt.
 - `-e, --prompt-editor`: Open your `$EDITOR` (or `$VISUAL`) to write the prompt
   interactively.
+- `--prompt-file-only`: Write the prompt file to the worktree without injecting
+  it into agent commands. No agent pane is required. Useful when your editor has
+  an embedded agent that reads `.workmux/PROMPT-*.md` directly.
 - `-a, --agent <name>`: The agent(s) to use for the worktree(s). Can be
   specified multiple times to generate a worktree for each agent. Overrides the
   `agent` from your config file.
@@ -632,6 +639,9 @@ workmux add feature/refactor --prompt-file task-description.md
 
 # Open your editor to write a prompt interactively
 workmux add feature/new-api --prompt-editor
+
+# Write prompt file only (for editors with embedded agents like neovim)
+workmux add feature/task -P task.md --prompt-file-only
 ```
 
 ##### Skipping setup steps
@@ -672,6 +682,11 @@ or whatever you've set via the `agent` config or `--agent` flag) without requiri
 
 This means you can launch AI agents with task-specific prompts without modifying
 your project configuration for each task.
+
+If your editor has an embedded agent (e.g., neovim with an agent plugin), use
+`--prompt-file-only` to write the prompt to `.workmux/PROMPT-<branch>.md` without
+requiring an agent pane. Your editor can then detect and consume the file on
+startup. This can also be set permanently in config with `prompt_file_only: true`.
 
 #### Automatic branch name generation
 
@@ -729,6 +744,8 @@ When an agent is configured, these commands are used automatically:
 | `gemini`   | `gemini -m gemini-2.5-flash-lite -p`                                     |
 | `codex`    | `codex exec --config model_reasoning_effort="low" -m gpt-5.1-codex-mini` |
 | `opencode` | `opencode run`                                                           |
+| `kiro-cli` | `kiro-cli chat --no-interactive`                                         |
+| `pi`       | `pi -p`                                                                  |
 
 To override back to `llm` when an agent is configured, set
 `auto_name.command: "llm"`.
@@ -1151,6 +1168,9 @@ merge status. Supports filtering by worktree handle or branch name.
   installed and authenticated. Note that it shows pull requests' statuses with
   [Nerd Font](https://www.nerdfonts.com/) icons, which requires Nerd Font
   compatible font installed.
+- `--json`: Output as JSON. Produces a JSON array of objects with fields:
+  `handle`, `branch`, `path`, `is_main`, `mode`, `has_uncommitted_changes`,
+  `is_open`, `created_at`.
 
 #### Examples
 
@@ -1161,6 +1181,9 @@ workmux list
 # List with PR status
 workmux list --pr
 
+# Output as JSON for scripting
+workmux list --json
+
 # Filter to specific worktrees
 workmux list my-feature
 workmux list feature-auth feature-api
@@ -1169,15 +1192,16 @@ workmux list feature-auth feature-api
 #### Example output
 
 ```
-BRANCH      AGENT  MUX  UNMERGED  PATH
-main        -      -    -         ~/project
-user-auth   🤖     ✓    -         ~/project__worktrees/user-auth
-bug-fix     ✅     ✓    ●         ~/project__worktrees/bug-fix
-api-work    -      ✓    -         ~/project__worktrees/api-work
+BRANCH      AGE  AGENT  MUX  UNMERGED  PATH
+main        -    -      -    -         ~/project
+user-auth   2h   🤖     ✓    -         ~/project__worktrees/user-auth
+bug-fix     3d   ✅     ✓    ●         ~/project__worktrees/bug-fix
+api-work    1w   -      ✓    -         ~/project__worktrees/api-work
 ```
 
 #### Key
 
+- AGE shows how old the worktree is (e.g., `2h`, `3d`, `1w`, `2mo`)
 - AGENT shows the current agent status (see
   [status tracking](https://workmux.dev/guide/status-tracking/)):
   - `🤖` = working, `💬` = waiting for input, `✅` = finished
@@ -1216,15 +1240,16 @@ placeholder usage.
 
 ---
 
-### `workmux open [name]`
+### `workmux open [name...]`
 
 Opens or switches to a tmux window for a pre-existing git worktree. If the
 window already exists, switches to it. If not, creates a new window with the
-configured pane layout and environment.
+configured pane layout and environment. Accepts multiple names to open several
+worktrees at once.
 
-- `[name]`: Worktree name (the directory name, which is also the tmux window
-  name without the prefix). Optional with `--new` when run from inside a
-  worktree.
+- `[name...]`: One or more worktree names (the directory name, which is also the
+  tmux window name without the prefix). Optional with `--new` when run from
+  inside a worktree.
 
 #### Options
 
@@ -1240,7 +1265,12 @@ configured pane layout and environment.
   a deleted `.env` file.
 - `-p, --prompt <text>`: Provide an inline prompt for AI agent panes.
 - `-P, --prompt-file <path>`: Provide a path to a file containing the prompt.
+- `-c, --continue`: Resume the agent's most recent conversation in this
+  worktree. Injects the appropriate flag for the configured agent (e.g.,
+  `--continue` for Claude, `--resume` for Gemini).
 - `-e, --prompt-editor`: Open your editor to write the prompt interactively.
+- `--prompt-file-only`: Write the prompt file without injecting it into agent
+  commands.
 
 #### What happens
 
@@ -1266,14 +1296,20 @@ workmux open --new
 # Open in session mode (converts from window mode if needed)
 workmux open user-auth --session
 
-# Open with a prompt for AI agents
-workmux open user-auth -p "Continue implementing the login flow"
+# Resume the agent's last conversation
+workmux open user-auth --continue
+
+# Resume and send a follow-up prompt
+workmux open user-auth --continue -p "Continue implementing the login flow"
 
 # Open and re-run dependency installation
 workmux open user-auth --run-hooks
 
 # Open and restore configuration files
 workmux open user-auth --force-files
+
+# Open multiple worktrees at once
+workmux open user-auth api-refactor bugfix-login
 ```
 
 ---
@@ -1301,6 +1337,28 @@ To reopen the window later, use [`workmux open`](#workmux-open-name).
 
 **Tip**: You can also use tmux's native kill-window command (default:
 `prefix + &`) to close a worktree's window with the same effect.
+
+---
+
+### `workmux sync-files`
+
+Re-applies file operations (copy and symlink from `files` config) to existing
+worktrees. Useful when you add new entries to the `files` config or a symlink
+was accidentally deleted.
+
+#### Options
+
+- `--all`: Sync all worktrees instead of just the current one.
+
+#### Examples
+
+```bash
+# Sync files to the current worktree
+workmux sync-files
+
+# Sync files to all worktrees
+workmux sync-files --all
+```
 
 ---
 
@@ -1357,6 +1415,7 @@ Useful for monitoring multiple parallel agents and quickly jumping between them.
 | `1`-`9`   | Quick jump to agent (closes dashboard)  |
 | `Tab`     | Toggle between current and last agent   |
 | `d`       | View diff (opens WIP view)              |
+| `o`       | Open PR in browser                      |
 | `p`       | Peek at agent (dashboard stays open)    |
 | `s`       | Cycle sort mode                         |
 | `/`       | Filter agents by name                   |
@@ -1599,18 +1658,21 @@ at-a-glance visibility into what the agent in each window doing.
 - 💬 = agent is waiting for user input
 - ✅ = agent finished (auto-clears on window focus)
 
-| Agent       | Status                                                                 |
-| ----------- | ---------------------------------------------------------------------- |
-| Claude Code | ✅ Supported                                                           |
-| Copilot CLI | ✅ Supported\*                                                         |
-| OpenCode    | ✅ Supported                                                           |
-| Gemini CLI  | [In progress](https://github.com/google-gemini/gemini-cli/issues/9070) |
-| Kiro        | [Tracking issue](https://github.com/kirodotdev/Kiro/issues/5440)       |
-| Codex       | [Tracking issue](https://github.com/openai/codex/issues/2109)          |
+| Agent        | Status                                                                      |
+| ------------ | --------------------------------------------------------------------------- |
+| Claude Code  | ✅ Supported                                                                |
+| Copilot CLI  | ✅ Supported\*                                                              |
+| OpenCode     | ✅ Supported                                                                |
+| Pi           | ✅ Supported\*                                                              |
+| Gemini CLI   | [In progress](https://github.com/google-gemini/gemini-cli/issues/9070)      |
+| Kiro         | [Tracking issue](https://github.com/kirodotdev/Kiro/issues/5440)            |
+| Codex        | [Tracking issue](https://github.com/openai/codex/issues/2109)               |
+| Mistral Vibe | [Tracking issue](https://github.com/mistralai/mistral-vibe/discussions/334) |
 
 **Notes:**
 
 - **Copilot CLI**: No 💬 waiting state
+- **Pi**: No 💬 waiting state
 - **Kiro**: Hooks support is messy: requires a custom agent since the default
   can't be edited
 
