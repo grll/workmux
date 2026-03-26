@@ -558,10 +558,8 @@ impl App {
                 }
             }
             None => {
-                self.status_message = Some((
-                    "No item selected".to_string(),
-                    std::time::Instant::now(),
-                ));
+                self.status_message =
+                    Some(("No item selected".to_string(), std::time::Instant::now()));
             }
         }
     }
